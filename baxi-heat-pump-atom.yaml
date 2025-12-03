@@ -12,9 +12,7 @@ esphome:
 esp32:
   board: esp32-s3-devkitc-1
   framework:
-    type: esp-idf
-  build_flags:
-    - "-D CONFIG_ESP32_CORE_DUMP_ENABLE=0"
+    type: arduino # esp-idf
 
 # Wi-Fi configuration
 wifi:
