@@ -146,7 +146,7 @@ sensor:
     name: "${friendly_name} Water Pressure"
     address: 409
     register_type: holding
-    value_type: U_BYTE
+    value_type: U_WORD
     unit_of_measurement: "bar"
     device_class: pressure
     state_class: measurement
@@ -224,7 +224,6 @@ text_sensor:
     name: "${friendly_name} Status"
     address: 411
     register_type: holding
-    value_type: U_BYTE
 
   # Sub status (Register 412 - AM014)
   - platform: modbus_controller
@@ -232,7 +231,6 @@ text_sensor:
     name: "${friendly_name} Sub Status"
     address: 412
     register_type: holding
-    value_type: U_BYTE
 
 # Binary states
 binary_sensor:
@@ -252,7 +250,6 @@ binary_sensor:
     name: "${friendly_name} Heat Pump Active"
     address: 279
     register_type: holding
-    value_type: U_BYTE
 
   # DHW active (Register 280, bit 4)
   - platform: modbus_controller
@@ -260,7 +257,6 @@ binary_sensor:
     name: "${friendly_name} DHW Active"
     address: 280
     register_type: holding
-    value_type: U_BYTE
 
   # Cooling active (Register 280, bit 6)
   - platform: modbus_controller
@@ -268,7 +264,6 @@ binary_sensor:
     name: "${friendly_name} Cooling Active"
     address: 280
     register_type: holding
-    value_type: U_BYTE
 
   # Water pressure low (Register 279, bit 7)
   - platform: modbus_controller
@@ -276,7 +271,6 @@ binary_sensor:
     name: "${friendly_name} Water Pressure Low"
     address: 279
     register_type: holding
-    value_type: U_BYTE
 
 # Switch commands
 switch:
@@ -286,7 +280,6 @@ switch:
     name: "${friendly_name} ON/OFF"
     address: 259
     register_type: holding
-    value_type: U_BYTE
     use_write_multiple: false
     on_turn_on:
       then:
@@ -313,7 +306,7 @@ number:
     name: "${friendly_name} Power Setpoint"
     address: 256
     register_type: holding
-    value_type: U_BYTE
+    value_type: U_WORD
     min_value: 0
     max_value: 100
     step: 1
@@ -333,4 +326,3 @@ number:
     unit_of_measurement: "°C"
     mode: box
     multiply: 100     # Multiply to convert °C to internal format
-    divide: 100       # For display purposes
