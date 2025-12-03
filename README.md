@@ -273,7 +273,7 @@ Found a problem? Have a question?
 
 ## License
 
-This project is licensed under the **GNU GENERAL PUBLIC LICENSE** - see [LICENSE](LICENSE) file for details.
+This project is licensed under the **GPL-3.0** - see [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
