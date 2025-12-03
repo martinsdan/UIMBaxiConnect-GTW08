@@ -6,7 +6,7 @@ esphome:
   name: ${devicename}
   friendly_name: ${friendly_name}
   project:
-    name: "Liberdade4.BaxiModbusIntegration"
+    name: "Liberdade4.UIMBaxiConnect-GTW08"
     version: "1.0"
 
 esp32:
