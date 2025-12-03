@@ -12,7 +12,9 @@ esphome:
 esp32:
   board: esp32-s3-devkitc-1
   framework:
-    type: arduino # esp-idf
+    type: esp-idf
+  build_flags:
+    - "-D CONFIG_ESP32_CORE_DUMP_ENABLE=0"
 
 # Wi-Fi configuration
 wifi:
@@ -58,13 +60,13 @@ light:
       - strobe:
           name: "Strobe"
 
-# UART configuration for Modbus RS485
+# UART configuration for Modbus RS485 via GTW-08
 uart:
   id: modbus_uart
   tx_pin: GPIO2    # Grove SDA (yellow) on AtomS3
   rx_pin: GPIO1    # Grove SCL (white) on AtomS3
   baud_rate: 9600
-  stop_bits: 2
+  stop_bits: 1
   parity: NONE
 
 # Modbus RTU
@@ -74,82 +76,136 @@ modbus:
   send_wait_time: 250ms
 
 modbus_controller:
-  - id: baxi_controller
-    address: 0x01              # Modbus slave address (confirm with controller)
+  - id: gtw08_controller
+    address: 0x64              # GTW-08 default Modbus address (100 decimal = 0x64 hex)
     modbus_id: modbus1
     command_throttle: 200ms
     setup_priority: -10
-    update_interval: 15s       # Poll every 15 seconds
+    update_interval: 15s
 
-# Heat pump sensors
+# Heat pump sensors via GTW-08
 sensor:
-  # Main temperatures
+  # Flow temperature (Register 400 - AM016)
   - platform: modbus_controller
-    modbus_controller_id: baxi_controller
+    modbus_controller_id: gtw08_controller
     name: "${friendly_name} Flow Temperature"
     id: temp_flow
-    address: 0x4E29           # Example address - confirm with Modbus map
+    address: 400
     register_type: holding
     value_type: S_WORD
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
-    accuracy_decimals: 1
+    accuracy_decimals: 2
     filters:
-      - multiply: 0.1         # Converts to °C if needed
-    on_value:
-      then:
-        - if:
-            condition:
-              lambda: 'return x > 0;'
-            then:
-              - light.turn_on:
-                  id: status_led
-                  brightness: 50%
-                  red: 0%
-                  green: 100%
-                  blue: 0%
+      - multiply: 0.01
 
+  # Return temperature (Register 401 - AM018)
   - platform: modbus_controller
-    modbus_controller_id: baxi_controller
+    modbus_controller_id: gtw08_controller
     name: "${friendly_name} Return Temperature"
     id: temp_return
-    address: 0x4E2A           # Example address
+    address: 401
     register_type: holding
     value_type: S_WORD
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
-    accuracy_decimals: 1
+    accuracy_decimals: 2
     filters:
-      - multiply: 0.1
+      - multiply: 0.01
 
-  # Outdoor temperature (if available)
+  # Outdoor temperature (Register 384)
   - platform: modbus_controller
-    modbus_controller_id: baxi_controller
+    modbus_controller_id: gtw08_controller
     name: "${friendly_name} Outdoor Temperature"
-    address: 0x4E20           # Example address
+    address: 384
     register_type: holding
     value_type: S_WORD
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # DHW Flow setpoint (Register 408 - DM004)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} DHW Setpoint"
+    address: 408
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # Water pressure (Register 409 - AM019)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Water Pressure"
+    address: 409
+    register_type: holding
+    value_type: U_BYTE
+    unit_of_measurement: "bar"
+    device_class: pressure
+    state_class: measurement
     accuracy_decimals: 1
     filters:
       - multiply: 0.1
 
-  # DHW setpoint
+  # System power output (Register 413 - AM024)
   - platform: modbus_controller
-    modbus_controller_id: baxi_controller
-    name: "${friendly_name} DHW Setpoint"
-    address: 0x4F10           # Example address
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Power Output"
+    address: 413
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    state_class: measurement
+    accuracy_decimals: 0
+
+  # Heat pump flow temperature (Register 403 - HM001)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} HP Flow Temperature"
+    address: 403
     register_type: holding
     value_type: S_WORD
     unit_of_measurement: "°C"
     device_class: temperature
-    accuracy_decimals: 1
+    state_class: measurement
+    accuracy_decimals: 2
     filters:
-      - multiply: 0.1
+      - multiply: 0.01
+
+  # Heat pump return temperature (Register 404 - HM002)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} HP Return Temperature"
+    address: 404
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # COP - Coefficient of Performance (Register 9230 - HM031)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} COP Current"
+    address: 9230
+    register_type: holding
+    value_type: U_WORD
+    state_class: measurement
+    accuracy_decimals: 3
+    filters:
+      - multiply: 0.001
 
   # Diagnostic sensors (WiFi/System)
   - platform: wifi_signal
@@ -164,6 +220,22 @@ text_sensor:
     ip_address:
       name: "${friendly_name} IP Address"
 
+  # Main appliance status (Register 411 - AM012)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Status"
+    address: 411
+    register_type: holding
+    value_type: U_BYTE
+
+  # Sub status (Register 412 - AM014)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Sub Status"
+    address: 412
+    register_type: holding
+    value_type: U_BYTE
+
 # Binary states
 binary_sensor:
   # Integrated button
@@ -176,35 +248,47 @@ binary_sensor:
       then:
         - light.toggle: status_led
 
-  # Compressor state
+  # Heat pump active (Register 279, bit 1)
   - platform: modbus_controller
-    modbus_controller_id: baxi_controller
-    name: "${friendly_name} Compressor Active"
-    address: 0x0001           # Example address
-    register_type: coil
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Heat Pump Active"
+    address: 279
+    register_type: holding
+    value_type: U_BYTE
 
-  # Active alarm
+  # DHW active (Register 280, bit 4)
   - platform: modbus_controller
-    modbus_controller_id: baxi_controller
-    name: "${friendly_name} Alarm Active"
-    address: 0x0002           # Example address
-    register_type: coil
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} DHW Active"
+    address: 280
+    register_type: holding
+    value_type: U_BYTE
 
-  # Cooling mode
+  # Cooling active (Register 280, bit 6)
   - platform: modbus_controller
-    modbus_controller_id: baxi_controller
-    name: "${friendly_name} Cooling Mode"
-    address: 0x0003           # Example address
-    register_type: coil
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Cooling Active"
+    address: 280
+    register_type: holding
+    value_type: U_BYTE
+
+  # Water pressure low (Register 279, bit 7)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Water Pressure Low"
+    address: 279
+    register_type: holding
+    value_type: U_BYTE
 
 # Switch commands
 switch:
-  # Heat pump ON/OFF
+  # System ON/OFF (Register 256 for Power, Register 259 for Heat Demand)
   - platform: modbus_controller
-    modbus_controller_id: baxi_controller
+    modbus_controller_id: gtw08_controller
     name: "${friendly_name} ON/OFF"
-    address: 0x0001           # Example address
-    register_type: coil
+    address: 259
+    register_type: holding
+    value_type: U_BYTE
     use_write_multiple: false
     on_turn_on:
       then:
@@ -225,17 +309,30 @@ switch:
 
 # Number controls
 number:
-  # Heating setpoint
+  # System power setpoint (Register 256)
   - platform: modbus_controller
-    modbus_controller_id: baxi_controller
-    name: "${friendly_name} Heating Setpoint"
-    address: 0x5001           # Example address
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Power Setpoint"
+    address: 256
     register_type: holding
-    value_type: S_WORD
-    min_value: 15
-    max_value: 35
-    step: 0.5
+    value_type: U_BYTE
+    min_value: 0
+    max_value: 100
+    step: 1
+    unit_of_measurement: "%"
+    mode: box
+
+  # Flow temperature setpoint (Register 257)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Flow Temperature Setpoint"
+    address: 257
+    register_type: holding
+    value_type: U_WORD
+    min_value: 200    # 20.00°C
+    max_value: 8000   # 80.00°C
+    step: 10          # 0.1°C increments
     unit_of_measurement: "°C"
     mode: box
-    multiply: 10              # If controller expects value × 10
-
+    multiply: 100     # Multiply to convert °C to internal format
+    divide: 100       # For display purposes
