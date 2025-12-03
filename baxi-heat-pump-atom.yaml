@@ -61,8 +61,8 @@ light:
 # UART configuration for Modbus RS485 via GTW-08
 uart:
   id: modbus_uart
-  tx_pin: GPIO2    # Grove SDA (yellow) on AtomS3
-  rx_pin: GPIO1    # Grove SCL (white) on AtomS3
+  tx_pin: GPIO6
+  rx_pin: GPIO5
   baud_rate: 9600
   stop_bits: 1
   parity: NONE
