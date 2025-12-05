@@ -52,6 +52,7 @@ light:
     chipset: ws2812
     name: "${friendly_name} Status LED"
     id: status_led
+    internal: true
     effects:
       - pulse:
           name: "Pulse"
