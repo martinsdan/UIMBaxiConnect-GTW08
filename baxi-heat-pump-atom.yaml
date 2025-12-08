@@ -52,6 +52,7 @@ light:
     chipset: ws2812
     name: "${friendly_name} Status LED"
     id: status_led
+    internal: true
     effects:
       - pulse:
           name: "Pulse"
@@ -82,8 +83,7 @@ modbus_controller:
     update_interval: 15s
     offline_skip_updates: 5  # Skip updates if no response
 
-
-# Heat pump sensors via GTW-08
+# Heat pump sensors via GTW-08 (ONLY VALID REGISTERS - See GTW-08 Manual)
 sensor:
   # Flow temperature (Register 400 - AM016)
   - platform: modbus_controller
@@ -119,6 +119,7 @@ sensor:
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "${friendly_name} Outdoor Temperature"
+    id: outdoor_temp
     address: 384
     register_type: holding
     value_type: S_WORD
@@ -129,48 +130,11 @@ sensor:
     filters:
       - multiply: 0.01
 
-  # DHW Flow setpoint (Register 408 - DM004)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} DHW Setpoint"
-    address: 408
-    register_type: holding
-    value_type: U_WORD
-    unit_of_measurement: "°C"
-    device_class: temperature
-    accuracy_decimals: 2
-    filters:
-      - multiply: 0.01
-
-  # Water pressure (Register 409 - AM019)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Water Pressure"
-    address: 409
-    register_type: holding
-    value_type: U_WORD
-    unit_of_measurement: "bar"
-    device_class: pressure
-    state_class: measurement
-    accuracy_decimals: 1
-    filters:
-      - multiply: 0.1
-
-  # System power output (Register 413 - AM024)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Power Output"
-    address: 413
-    register_type: holding
-    value_type: U_WORD
-    unit_of_measurement: "%"
-    state_class: measurement
-    accuracy_decimals: 0
-
   # Heat pump flow temperature (Register 403 - HM001)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "${friendly_name} HP Flow Temperature"
+    id: hp_temp_flow
     address: 403
     register_type: holding
     value_type: S_WORD
@@ -185,6 +149,7 @@ sensor:
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "${friendly_name} HP Return Temperature"
+    id: hp_temp_return
     address: 404
     register_type: holding
     value_type: S_WORD
@@ -195,23 +160,83 @@ sensor:
     filters:
       - multiply: 0.01
 
-  # COP - Coefficient of Performance (Register 9230 - HM031)
+  # DHW Flow setpoint (Register 408 - DM004)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} COP Current"
-    address: 9230
+    name: "${friendly_name} DHW Setpoint"
+    id: dhw_setpoint_read
+    address: 408
     register_type: holding
     value_type: U_WORD
-    state_class: measurement
-    accuracy_decimals: 3
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 2
     filters:
-      - multiply: 0.001
+      - multiply: 0.01
 
-  # Diagnostic sensors (WiFi/System)
+  # Water pressure (Register 409 - AM019)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Water Pressure"
+    id: water_pressure
+    address: 409
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "bar"
+    device_class: pressure
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+
+  # Error code (Register 410 - for diagnostics)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Error Code"
+    id: error_code
+    address: 410
+    register_type: holding
+    value_type: U_WORD
+    entity_category: diagnostic
+
+  # System status (Register 411 - AM012 - Main appliance status)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} System Status Code"
+    id: system_status_code
+    address: 411
+    register_type: holding
+    value_type: U_WORD
+    entity_category: diagnostic
+
+  # Sub status (Register 412 - AM014 - Sub status)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Sub Status Code"
+    id: sub_status_code
+    address: 412
+    register_type: holding
+    value_type: U_WORD
+    entity_category: diagnostic
+
+  # System power output (Register 413 - AM024)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Power Output"
+    id: power_output
+    address: 413
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    state_class: measurement
+    accuracy_decimals: 0
+
+  # WiFi signal
   - platform: wifi_signal
     name: "${friendly_name} WiFi Signal"
     update_interval: 60s
 
+  # Uptime
   - platform: uptime
     name: "${friendly_name} Uptime"
 
@@ -220,23 +245,6 @@ text_sensor:
     ip_address:
       name: "${friendly_name} IP Address"
 
-  # Main appliance status (Register 411 - AM012)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} System Status"
-    id: system_status
-    address: 411
-    register_type: holding
-    entity_category: diagnostic
-
-  # Sub status (Register 412 - AM014)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Sub Status"
-    address: 412
-    register_type: holding
-
-# Binary states
 binary_sensor:
   # Integrated button
   - platform: gpio
@@ -248,53 +256,35 @@ binary_sensor:
       then:
         - light.toggle: status_led
 
-  # Heat pump active (Register 279, bit 1)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Heat Pump Active"
-    address: 279
-    register_type: holding
-
-  # DHW active (Register 280, bit 4)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} DHW Active"
-    address: 280
-    register_type: holding
-
-  # Cooling active (Register 280, bit 6)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Cooling Active"
-    address: 280
-    register_type: holding
-
-  # Water pressure low (Register 279, bit 7)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Water Pressure Low"
-    address: 279
-    register_type: holding
-
 # Switch commands
 switch:
-  # System ON/OFF (Register 256 for Power, Register 259 for Heat Demand)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} ON/OFF"
-    address: 259
-    register_type: holding
-    use_write_multiple: false
-    on_turn_on:
+  - platform: template
+    name: "${friendly_name} System ON/OFF"
+    
+    # Read state from register 258
+    lambda: |-
+      return id(algorithm_type).state == 3;
+    
+    turn_on_action:
       then:
+        - number.set:
+            id: algorithm_type
+            value: 3  # ON = 3 (Remote monitoring)
         - light.turn_on:
             id: status_led
             brightness: 100%
             red: 0%
             green: 0%
             blue: 100%
-    on_turn_off:
+    
+    turn_off_action:
       then:
+        - number.set:
+            id: algorithm_type
+            value: 0  # OFF = 0
+        - number.set:
+            id: heat_demand
+            value: 0  # OFF = 0
         - light.turn_on:
             id: status_led
             brightness: 30%
@@ -316,6 +306,7 @@ number:
     step: 1
     unit_of_measurement: "%"
     mode: box
+    entity_category: config
 
   # Flow temperature setpoint (Register 257)
   - platform: modbus_controller
@@ -324,18 +315,38 @@ number:
     address: 257
     register_type: holding
     value_type: U_WORD
-    min_value: 20    # 20.00°C
-    max_value: 80    # 80.00°C
-    step: 0.1          # 0.1°C increments
+    min_value: 20
+    max_value: 80
+    step: 1
     unit_of_measurement: "°C"
     mode: box
-    lambda: |-
-      return x / 100.0;
-    write_lambda: |-
-      return (uint16_t)(x * 100);
-    icon: "mdi:thermometer-plus"
-    #restore: true  # Remember last value after reboot
+    entity_category: config
 
+    # Register 258 (Algorithm Type)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Algorithm Type"
+    id: algorithm_type
+    address: 258
+    register_type: holding
+    value_type: U_WORD
+    min_value: 0
+    max_value: 3
+    step: 1
+
+# Register 259 (Heat Demand)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Heat Demand"
+    id: heat_demand
+    address: 259
+    register_type: holding
+    value_type: U_WORD
+    min_value: 0
+    max_value: 8
+    step: 1
+
+  # DHW temperature setpoint (Register 408)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "${friendly_name} DHW Temperature Setpoint"
@@ -347,4 +358,4 @@ number:
     step: 1
     unit_of_measurement: "°C"
     mode: slider
-    #restore: true
+    entity_category: config
