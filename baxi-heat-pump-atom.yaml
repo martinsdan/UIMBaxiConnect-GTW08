@@ -258,23 +258,33 @@ binary_sensor:
 
 # Switch commands
 switch:
-  # System ON/OFF (Register 259)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} ON/OFF"
-    address: 259
-    register_type: holding
-    use_write_multiple: false
-    on_turn_on:
+  - platform: template
+    name: "${friendly_name} System ON/OFF"
+    
+    # Read state from register 258
+    lambda: |-
+      return id(algorithm_type).state == 3;
+    
+    turn_on_action:
       then:
+        - number.set:
+            id: algorithm_type
+            value: 3  # ON = 3 (Remote monitoring)
         - light.turn_on:
             id: status_led
             brightness: 100%
             red: 0%
             green: 0%
             blue: 100%
-    on_turn_off:
+    
+    turn_off_action:
       then:
+        - number.set:
+            id: algorithm_type
+            value: 0  # OFF = 0
+        - number.set:
+            id: heat_demand
+            value: 0  # OFF = 0
         - light.turn_on:
             id: status_led
             brightness: 30%
@@ -311,6 +321,30 @@ number:
     unit_of_measurement: "°C"
     mode: box
     entity_category: config
+
+    # Register 258 (Algorithm Type)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Algorithm Type"
+    id: algorithm_type
+    address: 258
+    register_type: holding
+    value_type: U_WORD
+    min_value: 0
+    max_value: 3
+    step: 1
+
+# Register 259 (Heat Demand)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Heat Demand"
+    id: heat_demand
+    address: 259
+    register_type: holding
+    value_type: U_WORD
+    min_value: 0
+    max_value: 8
+    step: 1
 
   # DHW temperature setpoint (Register 408)
   - platform: modbus_controller
