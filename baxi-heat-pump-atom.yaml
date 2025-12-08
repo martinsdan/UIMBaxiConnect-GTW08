@@ -76,12 +76,12 @@ modbus:
 
 modbus_controller:
   - id: gtw08_controller
-    address: 0x64              # GTW-08 default Modbus address (100 decimal = 0x64 hex)
+    address: 0x64 # GTW-08 default Modbus address (100 decimal = 0x64 hex)
     modbus_id: modbus1
     command_throttle: 200ms
     setup_priority: -10
     update_interval: 15s
-    offline_skip_updates: 5  # Skip updates if no response
+    offline_skip_updates: 5 # Skip updates if no response
 
 # Heat pump sensors via GTW-08 (ONLY VALID REGISTERS - See GTW-08 Manual)
 sensor:
@@ -245,6 +245,58 @@ text_sensor:
     ip_address:
       name: "${friendly_name} IP Address"
 
+  # System Status (Register 411) - Friendly Name
+  - platform: template
+    name: "${friendly_name} System Status"
+    id: system_status_text
+    entity_category: diagnostic
+    update_interval: 15s
+    lambda: |-
+      uint16_t status_code = (uint16_t)id(system_status_code).state;
+      
+      switch(status_code) {
+        case 0: return std::string("Startup");
+        case 1: return std::string("Normal Operation");
+        case 2: return std::string("Diagnostics");
+        case 3: return std::string("Error");
+        case 4: return std::string("Maintenance");
+        case 5: return std::string("Service");
+        case 10: return std::string("Standby");
+        case 11: return std::string("Heating");
+        case 12: return std::string("Cooling");
+        case 13: return std::string("DHW");
+        case 14: return std::string("Anti Legionella");
+        case 15: return std::string("Defrost");
+        default: return std::string("Unknown (" + to_string(status_code) + ")");
+      }
+
+  # Sub Status (Register 412) - Friendly Name
+  - platform: template
+    name: "${friendly_name} Sub Status"
+    id: sub_status_text
+    entity_category: diagnostic
+    update_interval: 15s
+    lambda: |-
+      uint16_t sub_code = (uint16_t)id(sub_status_code).state;
+      
+      switch(sub_code) {
+        case 0: return std::string("Off");
+        case 1: return std::string("Heating");
+        case 2: return std::string("Cooling");
+        case 3: return std::string("Hot Water");
+        case 4: return std::string("Heating + DHW");
+        case 5: return std::string("Cooling + DHW");
+        case 10: return std::string("Defrosting");
+        case 11: return std::string("Standby");
+        case 12: return std::string("Error");
+        case 13: return std::string("Maintenance");
+        case 20: return std::string("Compressor On");
+        case 21: return std::string("Compressor Off");
+        case 30: return std::string("Pump On");
+        case 31: return std::string("Pump Off");
+        default: return std::string("Unknown (" + to_string(sub_code) + ")");
+      }
+
 binary_sensor:
   # Integrated button
   - platform: gpio
@@ -260,31 +312,31 @@ binary_sensor:
 switch:
   - platform: template
     name: "${friendly_name} System ON/OFF"
-    
+
     # Read state from register 258
     lambda: |-
       return id(algorithm_type).state == 3;
-    
+
     turn_on_action:
       then:
         - number.set:
             id: algorithm_type
-            value: 3  # ON = 3 (Remote monitoring)
+            value: 3 # ON = 3 (Remote monitoring)
         - light.turn_on:
             id: status_led
             brightness: 100%
             red: 0%
             green: 0%
             blue: 100%
-    
+
     turn_off_action:
       then:
         - number.set:
             id: algorithm_type
-            value: 0  # OFF = 0
+            value: 0 # OFF = 0
         - number.set:
             id: heat_demand
-            value: 0  # OFF = 0
+            value: 0 # OFF = 0
         - light.turn_on:
             id: status_led
             brightness: 30%
@@ -322,7 +374,7 @@ number:
     mode: box
     entity_category: config
 
-    # Register 258 (Algorithm Type)
+  # Register 258 (Algorithm Type)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "${friendly_name} Algorithm Type"
@@ -334,7 +386,7 @@ number:
     max_value: 3
     step: 1
 
-# Register 259 (Heat Demand)
+  # Register 259 (Heat Demand)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "${friendly_name} Heat Demand"
