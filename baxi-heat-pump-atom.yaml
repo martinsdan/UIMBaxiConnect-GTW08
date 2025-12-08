@@ -225,7 +225,7 @@ sensor:
     address: 411
     register_type: holding
     value_type: U_WORD
-    entity_category: diagnostic
+    internal: true  # Hide from Home Assistant
 
   # Sub status (Register 412 - AM014 - Sub status)
   - platform: modbus_controller
@@ -235,7 +235,7 @@ sensor:
     address: 412
     register_type: holding
     value_type: U_WORD
-    entity_category: diagnostic
+    internal: true  # Hide from Home Assistant
 
   # System power output (Register 413 - AM024)
   - platform: modbus_controller
