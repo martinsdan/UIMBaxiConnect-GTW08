@@ -11,12 +11,13 @@ ESPHome firmware for **M5Stack AtomS3 Lite + Atomic RS485 Base** to integrate **
 - ✅ **Flow/Return Temperatures** (Primary & Heat Pump circuits)
 - ✅ **Outdoor Temperature** & **DHW Setpoint**
 - ✅ **Water Pressure** monitoring
-- ✅ **System Power Output** & **COP** (Coefficient of Performance)
-- ✅ **Status monitoring** (Main/Sub Status, Heat Pump Active, DHW Active, Cooling)
-- ✅ **Control**: Power setpoint, Flow temperature setpoint, ON/OFF
+- ✅ **System Power Output**
+- ✅ **Status monitoring** with friendly names (from GTW-08 manual)
+- ✅ **Full Control**: System ON/OFF, Algorithm Type, Heat Demand, Power/Flow/DHW Setpoints
 - ✅ **Status LED** feedback with AtomS3 RGB LED
 - ✅ **OTA Updates** & **Web Server** for diagnostics
 - ✅ **WiFi Fallback AP** for configuration
+- ✅ **Boot protection** - Preserves heat pump state on restart (no spurious cycling)
 
 ## Hardware Required
 
@@ -99,15 +100,37 @@ After first boot:
 - All sensors should appear in Home Assistant within 1-2 minutes
 - Status LED should turn green when connected to Modbus
 
-## YAML Configuration Highlights
+## Configuration Details
 
-### Board Selection
+### Board & Framework
 ```yaml
 esp32:
-  board: esp32-s3-devkitc-1 # A generic S3 board
+  board: esp32-s3-devkitc-1
   framework:
     type: arduino
 ```
+
+### Boot Protection
+
+To prevent the heat pump from cycling on ESPHome restart, a global boot flag is used:
+
+```yaml
+globals:
+  - id: boot_complete
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+esphome:
+  on_boot:
+    priority: -100
+    then:
+      - globals.set:
+          id: boot_complete
+          value: 'true'
+```
+
+The **System ON/OFF switch** only executes its turn_on/turn_off actions after `boot_complete` is set to true. This preserves the device's actual operational state across restarts.
 
 ### UART (RS485 via Atomic Base)
 ```yaml
@@ -120,101 +143,161 @@ uart:
   parity: NONE
 ```
 
-### Modbus Controller (GTW-08)
+### Modbus Controller
 ```yaml
 modbus_controller:
   - id: gtw08_controller
-    address: 0x64           # Matches rotary dial position 0
+    address: 0x64           # GTW-08 default address
     modbus_id: modbus1
-    update_interval: 15s
+    setup_priority: 100     # Ensures reads before switch evaluates
+    update_interval: 15s    # Poll every 15 seconds
+    command_throttle: 200ms # Wait between requests
 ```
 
-## Available Sensors
+## Home Assistant Integration
 
-### Temperatures
-- **Flow Temperature** (Register 400) - Primary circuit
-- **Return Temperature** (Register 401) - Primary circuit
-- **HP Flow Temperature** (Register 403) - Heat pump circuit
-- **HP Return Temperature** (Register 404) - Heat pump circuit
-- **Outdoor Temperature** (Register 384)
-- **DHW Setpoint** (Register 408)
+### Switches
+- **System ON/OFF** - Toggle heat pump (sets Algorithm Type: 3=ON, 0=OFF)
 
-### System Information
-- **Water Pressure** (Register 409)
-- **Power Output** (Register 413)
-- **COP Current** (Register 9230)
-- **System Status** (Register 411)
-- **Heat Pump Active** (Register 279)
-- **DHW Active** (Register 280)
-- **Cooling Active** (Register 280)
+### Number Controls (Read-Write)
+- **Algorithm Type** (0-3) - 0=OFF, 3=Remote monitoring (ON)
+- **Heat Demand** (0-8) - Heat demand level
+- **Power Setpoint** (0-100%) - System power output
+- **Flow Temperature Setpoint** (20-80°C) - Primary circuit flow temp
+- **DHW Temperature Setpoint** (30-60°C) - Domestic hot water setpoint
 
-### Controls
-- **Power Setpoint** (Register 256) - 0-100%
-- **Flow Temperature Setpoint** (Register 257) - 20-80°C
-- **ON/OFF Switch** (Register 259)
+### Sensors (Read-Only)
 
-## Troubleshooting
+**Temperatures:**
+- Flow Temperature (Primary circuit)
+- Return Temperature (Primary circuit)
+- HP Flow Temperature (Heat pump circuit)
+- HP Return Temperature (Heat pump circuit)
+- Outdoor Temperature
+- DHW Setpoint
 
-### Sensors Show "Unknown"
+**System Data:**
+- Water Pressure (bar)
+- Power Output (%)
+- System Status Code (numeric)
+- System Status (friendly name)
+- Sub Status Code (numeric)
+- Sub Status (friendly name)
 
-**Check 1: GTW-08 Configuration**
-```
-❌ Rotary Dial not at position 0 → Set to position 0
-❌ DIP 1-2 not OFF/OFF → Set both to OFF
-❌ DIP 3-4 not OFF/OFF → Set both to OFF
-```
+**Diagnostics:**
+- Error Code
+- WiFi Signal
+- Uptime
 
-**Check 2: Wiring**
-```
-❌ A/B wires swapped → Swap the RS485 A and B connections
-❌ Missing GND connection → Connect OV from GTW-08 to GND
-❌ Loose connections → Verify all terminal connections
-```
+## System Status Codes
 
-**Check 3: ESPHome Settings**
-```
-❌ Wrong board → Use m5stack-atoms3-lite
-❌ Wrong GPIO pins → TX=GPIO6, RX=GPIO5
-❌ Wrong stop_bits → Use stop_bits: 1
-❌ Wrong address → Use address: 0x64
-```
+<details>
+<summary><b>Click to expand System Status Codes (Register 411 - AM012)</b></summary>
 
-### Communication Errors
+| Code | Status |
+|------|--------|
+| 0 | Standby |
+| 1 | Heat Demand |
+| 2 | Generator start |
+| 3 | Generator CH |
+| 4 | Generator DHW |
+| 5 | Generator stop |
+| 6 | Pump Post Run |
+| 7 | Cooling Active |
+| 8 | Controlled Stop |
+| 9 | Blocking Mode |
+| 10 | Locking Mode |
+| 11 | Load test min |
+| 12 | Load test CH max |
+| 13 | Load test DHW max |
+| 15 | Manual Heat Demand |
+| 16 | Frost Protection |
+| 17 | Deaeration |
+| 18 | Control unit Cooling |
+| 19 | Reset In Progress |
+| 20 | Auto Filling |
+| 21 | Halted |
+| 22 | Forced calibration |
+| 23 | Factory test |
+| 24 | Hydronic balancing |
+| 200 | Device Mode |
+| 254 | Unknown |
 
-**Check Logs:**
-1. Open ESPHome Dashboard
-2. Select device → **Show Logs**
-3. Look for messages like:
-   - `Modbus timeout` → Check wiring and GTW-08 settings
-   - `CRC error` → Check baud rate and parity
-   - `Exception code` → Check register addresses
+Reference: GTW-08 Manual, Table 16
 
-**Quick Test:**
-Create a minimal YAML with only one sensor:
-```yaml
-sensor:
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "Test Flow Temp"
-    address: 400
-    register_type: holding
-    value_type: S_WORD
-    unit_of_measurement: "°C"
-    accuracy_decimals: 2
-    filters:
-      - multiply: 0.01
-```
+</details>
 
-If this sensor shows values, the Modbus connection is working!
+## Sub Status Codes
 
-## Supported Baxi Models
+<details>
+<summary><b>Click to expand Sub Status Codes (Register 412 - AM014)</b></summary>
 
-This integration has been tested and is compatible with:
+| Code | Sub Status |
+|------|-----------|
+| 0 | Standby |
+| 1 | AntiCycling |
+| 2 | CloseHydraulicValve |
+| 3 | ClosePump |
+| 4 | WaitingForStartCond |
+| 10 | CloseExtGasValve |
+| 11 | StartToGlueGasValve |
+| 12 | CloseFlueGasValve |
+| 13 | FanToPrePurge |
+| 14 | WaitForReleaseSignal |
+| 15 | BurnerOnCommandToSu |
+| 16 | VpsTest |
+| 17 | PreIgnition |
+| 18 | Ignition |
+| 19 | FlameCheck |
+| 20 | Interpurge |
+| 21 | Generator starting |
+| 30 | Normal Int.Setpoint |
+| 31 | Limited Int.Setpoint |
+| 32 | NormalPowerControl |
+| 33 | GradLevel1PowerCtrl |
+| 34 | GradLevel2PowerCtrl |
+| 35 | GradLevel3PowerCtrl |
+| 36 | ProtectFlamePwrCtrl |
+| 37 | StabilizationTime |
+| 38 | ColdStart |
+| 39 | ChResume |
+| 40 | SuRemoveBurner |
+| 41 | FanToPostPurge |
+| 42 | OpenExtFlueGasValve |
+| 43 | StopFanToFlueGVRpm |
+| 44 | StopFan |
+| 45 | LimitedPwrOnTflueGas |
+| 46 | AutoFillingInstall |
+| 47 | AutoFillingTopUp |
+| 48 | Reduced Set Point |
+| 49 | Offset adaption |
+| 60 | PumpPostRunning |
+| 61 | OpenPump |
+| 62 | OpenHydraulicValve |
+| 63 | Start anticycle time |
+| 65 | Compressor relieved |
+| 66 | HP Tmax backup on |
+| 67 | Outdoor limit HP off |
+| 68 | HP stop by hybrid |
+| 69 | Defrost with HP |
+| 70 | Defrost with backup |
+| 71 | Defrost HP backup |
+| 72 | Source pump backup |
+| 73 | HP flow over Tmax |
+| 74 | Source pump post run |
+| 75 | HP off high humidity |
+| 76 | HP off water flow |
+| 78 | Humidity setpoint |
+| 79 | Generators relieved |
+| 80 | HP relieved cooling |
+| 81 | HP stop outdoor temp |
+| 82 | HP off flow Tmax |
+| 83 | Deair pump valve CH |
+| 84 | Deair pump valve DHW |
 
-- ✅ Baxi Platinum BC Plus Monobloc 2
-- ✅ UIMB Baxi Connect with GTW-08
+Reference: GTW-08 Manual, Table 17
 
-**Note:** Compatibility depends on the GTW-08 being officially supported by your specific Baxi model. Check with your installer.
+</details>
 
 ## Status LED Feedback
 
@@ -226,31 +309,82 @@ The RGB LED on AtomS3 Lite provides visual feedback:
 | 🔵 Blue (100%) | Heat pump turned ON |
 | 🟠 Orange (30%) | Heat pump in standby |
 
-## Performance & Polling
+## Troubleshooting
 
-- **Update Interval:** 15 seconds (configurable)
-- **Modbus Baud Rate:** 9600 (fixed by GTW-08)
-- **Response Time:** ~250ms per Modbus request
-- **WiFi Signal Display:** Every 60 seconds
+### System Turns Off on Every Reboot
+
+The boot protection mechanism prevents this. If you experience spurious cycling:
+
+1. Check that `boot_complete` flag logic is in place in your YAML
+2. Verify `setup_priority: 100` is set on modbus_controller
+3. Check logs for "Boot complete, switch is now active" message
+4. Clear `.storage/` directory and reflash
+
+### Sensors Show "Unknown"
+
+**Check GTW-08 Configuration:**
+- Rotary Dial must be at position 0
+- DIP switches 1-2 must be OFF/OFF
+- DIP switches 3-4 must be OFF/OFF
+
+**Check Wiring:**
+- GTW-08 OV (GND) → Atomic RS485 Base GND
+- GTW-08 A (Data+) → Atomic RS485 Base A
+- GTW-08 B (Data-) → Atomic RS485 Base B
+- All connections must be secure
+
+**Check YAML:**
+- Board: `esp32-s3-devkitc-1`
+- UART TX: GPIO6, RX: GPIO5
+- Stop bits: 1
+- Parity: NONE
+- Modbus address: 0x64
+
+### Communication Errors
+
+Check ESPHome logs for:
+- `Modbus timeout` - Verify wiring and GTW-08 settings
+- `CRC error` - Verify baud rate (9600) and parity (NONE)
+- `Exception code` - Verify register addresses in YAML
+
+**Quick Test:** Create a minimal sensor config with just one register (e.g., 400 for flow temperature). If it shows values, Modbus communication is working.
+
+## Supported Baxi Models
+
+Compatibility depends on GTW-08 support from Baxi:
+
+- ✅ Baxi Platinum BC Plus Monobloc 2
+- ✅ UIMB Baxi Connect with GTW-08
+
+Verify GTW-08 compatibility with your system's documentation.
+
+## Performance & Timing
+
+- **Modbus Polling:** Every 15 seconds
+- **Baud Rate:** 9600 (fixed by GTW-08)
+- **Response Time:** ~250ms per Modbus command
+- **WiFi Signal Update:** Every 60 seconds
+- **Boot Protection Delay:** ~100ms to ensure modbus reads
 
 ## Known Limitations
 
-- **Single GTW-08 per system** - Cascade support not yet implemented
-- **Read-only COP** - Write operations not supported
-- **No alarm codes** - Status only (main/sub state)
-- **Zoning support** - Manual configuration required
+- Single GTW-08 per system (cascade not supported)
+- Status codes limited to GTW-08 manual definitions
+- Energy counters not yet implemented (registers available)
+- Zoning requires manual configuration
 
 ## Roadmap
 
 - [ ] Energy counters (kWh consumption)
-- [ ] Advanced alarm codes & diagnostics
+- [ ] Advanced diagnostics dashboard
 - [ ] Multi-zone support
 - [ ] Cascade system optimization
-- [ ] InfluxDB direct integration
+- [ ] InfluxDB integration
+- [ ] Home Assistant energy dashboard examples
 
 ## Contributing
 
-We welcome contributions! Please:
+Contributions are welcome! Please:
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/your-feature`
@@ -260,35 +394,35 @@ We welcome contributions! Please:
 
 **Before submitting:**
 - Test with your Baxi model
-- Update README if adding new features
-- Include hardware/software versions used
+- Update README with any new features
+- Include hardware/software versions
+- Reference GTW-08 manual for register documentation
 
 ## Issues & Support
 
-Found a problem? Have a question?
-
 - 🐛 **Bug Report:** [Open an Issue](https://github.com/martinsdan/UIMBaxiConnect-GTW08/issues)
-- 💬 **Discussion:** Use GitHub Discussions
+- 💬 **Questions:** GitHub Discussions
 - 📚 **Documentation:** Check the Wiki
+- 📖 **GTW-08 Manual:** See `/docs` folder
 
 ## License
 
-This project is licensed under the **GPL-3.0** - see [LICENSE](LICENSE) file for details.
+This project is licensed under **GPL-3.0** - see [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
-- **M5Stack** - For the excellent AtomS3 Lite and Atomic RS485 Base
+- **M5Stack** - AtomS3 Lite and Atomic RS485 Base
 - **Baxi/Remeha** - GTW-08 Modbus Gateway documentation
-- **ESPHome** - Robust and flexible microcontroller firmware
-- **Home Assistant** - Smart home automation platform
+- **ESPHome** - Microcontroller firmware platform
+- **Home Assistant** - Home automation ecosystem
 - **Community** - Testing, feedback, and contributions
 
 ## References
 
 - [ESPHome Documentation](https://esphome.io/)
 - [Baxi GTW-08 Manual](https://www.baxi.pt/)
-- [M5Stack AtomS3 Lite Docs](https://docs.m5stack.com/en/core/AtomS3%20Lite)
-- [Home Assistant Modbus Integration](https://www.home-assistant.io/integrations/modbus/)
+- [M5Stack AtomS3 Lite](https://docs.m5stack.com/en/core/AtomS3%20Lite)
+- [Home Assistant Modbus](https://www.home-assistant.io/integrations/modbus/)
 
 ---
 
