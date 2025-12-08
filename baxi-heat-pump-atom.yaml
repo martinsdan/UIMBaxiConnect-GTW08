@@ -8,11 +8,25 @@ esphome:
   project:
     name: "Liberdade4.UIMBaxiConnect-GTW08"
     version: "1.0"
+  on_boot:
+    priority: -100
+    then:
+      - globals.set:
+          id: boot_complete
+          value: 'true'
+      - logger.log: "Boot complete, switch is now active"
 
 esp32:
   board: esp32-s3-devkitc-1
   framework:
     type: arduino # esp-idf
+
+# Global variable to prevent switch actions during boot
+globals:
+  - id: boot_complete
+    type: bool
+    restore_value: no
+    initial_value: 'false'
 
 # Wi-Fi configuration
 wifi:
@@ -42,6 +56,10 @@ ota:
 logger:
   level: INFO
   baud_rate: 0
+
+button:
+  - platform: restart
+    name: "Restart"
 
 # Integrated status LED on AtomS3
 light:
@@ -76,12 +94,12 @@ modbus:
 
 modbus_controller:
   - id: gtw08_controller
-    address: 0x64              # GTW-08 default Modbus address (100 decimal = 0x64 hex)
+    address: 0x64 # GTW-08 default Modbus address (100 decimal = 0x64 hex)
     modbus_id: modbus1
     command_throttle: 200ms
-    setup_priority: -10
+    setup_priority: 100  # Higher priority to ensure reads complete before switch evaluates
     update_interval: 15s
-    offline_skip_updates: 5  # Skip updates if no response
+    offline_skip_updates: 5 # Skip updates if no response
 
 # Heat pump sensors via GTW-08 (ONLY VALID REGISTERS - See GTW-08 Manual)
 sensor:
@@ -207,7 +225,7 @@ sensor:
     address: 411
     register_type: holding
     value_type: U_WORD
-    entity_category: diagnostic
+    internal: true  # Hide from Home Assistant
 
   # Sub status (Register 412 - AM014 - Sub status)
   - platform: modbus_controller
@@ -217,7 +235,7 @@ sensor:
     address: 412
     register_type: holding
     value_type: U_WORD
-    entity_category: diagnostic
+    internal: true  # Hide from Home Assistant
 
   # System power output (Register 413 - AM024)
   - platform: modbus_controller
@@ -245,6 +263,118 @@ text_sensor:
     ip_address:
       name: "${friendly_name} IP Address"
 
+  # System Status (Register 411) - Friendly Name (Tab.16 AM012)
+  - platform: template
+    name: "${friendly_name} System Status"
+    id: system_status_text
+    entity_category: diagnostic
+    update_interval: 15s
+    lambda: |-
+      uint16_t status_code = (uint16_t)id(system_status_code).state;
+      
+      switch(status_code) {
+        case 0: return std::string("Standby");
+        case 1: return std::string("Heat Demand");
+        case 2: return std::string("Generator start");
+        case 3: return std::string("Generator CH");
+        case 4: return std::string("Generator DHW");
+        case 5: return std::string("Generator stop");
+        case 6: return std::string("Pump Post Run");
+        case 7: return std::string("Cooling Active");
+        case 8: return std::string("Controlled Stop");
+        case 9: return std::string("Blocking Mode");
+        case 10: return std::string("Locking Mode");
+        case 11: return std::string("Load test min");
+        case 12: return std::string("Load test CH max");
+        case 13: return std::string("Load test DHW max");
+        case 15: return std::string("Manual Heat Demand");
+        case 16: return std::string("Frost Protection");
+        case 17: return std::string("Deaeration");
+        case 18: return std::string("Control unit Cooling");
+        case 19: return std::string("Reset In Progress");
+        case 20: return std::string("Auto Filling");
+        case 21: return std::string("Halted");
+        case 22: return std::string("Forced calibration");
+        case 23: return std::string("Factory test");
+        case 24: return std::string("Hydronic balancing");
+        case 200: return std::string("Device Mode");
+        case 254: return std::string("Unknown");
+        default: return std::string("Unknown (" + to_string(status_code) + ")");
+      }
+
+  # Sub Status (Register 412) - Friendly Name (Tab.17 AM014)
+  - platform: template
+    name: "${friendly_name} Sub Status"
+    id: sub_status_text
+    entity_category: diagnostic
+    update_interval: 15s
+    lambda: |-
+      uint16_t sub_code = (uint16_t)id(sub_status_code).state;
+      
+      switch(sub_code) {
+        case 0: return std::string("Standby");
+        case 1: return std::string("AntiCycling");
+        case 2: return std::string("CloseHydraulicValve");
+        case 3: return std::string("ClosePump");
+        case 4: return std::string("WaitingForStartCond");
+        case 10: return std::string("CloseExtGasValve");
+        case 11: return std::string("StartToGlueGasValve");
+        case 12: return std::string("CloseFlueGasValve");
+        case 13: return std::string("FanToPrePurge");
+        case 14: return std::string("WaitForReleaseSignal");
+        case 15: return std::string("BurnerOnCommandToSu");
+        case 16: return std::string("VpsTest");
+        case 17: return std::string("PreIgnition");
+        case 18: return std::string("Ignition");
+        case 19: return std::string("FlameCheck");
+        case 20: return std::string("Interpurge");
+        case 21: return std::string("Generator starting");
+        case 30: return std::string("Normal Int.Setpoint");
+        case 31: return std::string("Limited Int.Setpoint");
+        case 32: return std::string("NormalPowerControl");
+        case 33: return std::string("GradLevel1PowerCtrl");
+        case 34: return std::string("GradLevel2PowerCtrl");
+        case 35: return std::string("GradLevel3PowerCtrl");
+        case 36: return std::string("ProtectFlamePwrCtrl");
+        case 37: return std::string("StabilizationTime");
+        case 38: return std::string("ColdStart");
+        case 39: return std::string("ChResume");
+        case 40: return std::string("SuRemoveBurner");
+        case 41: return std::string("FanToPostPurge");
+        case 42: return std::string("OpenExtFlueGasValve");
+        case 43: return std::string("StopFanToFlueGVRpm");
+        case 44: return std::string("StopFan");
+        case 45: return std::string("LimitedPwrOnTflueGas");
+        case 46: return std::string("AutoFillingInstall");
+        case 47: return std::string("AutoFillingTopUp");
+        case 48: return std::string("Reduced Set Point");
+        case 49: return std::string("Offset adaption");
+        case 60: return std::string("PumpPostRunning");
+        case 61: return std::string("OpenPump");
+        case 62: return std::string("OpenHydraulicValve");
+        case 63: return std::string("Start anticycle time");
+        case 65: return std::string("Compressor relieved");
+        case 66: return std::string("HP Tmax backup on");
+        case 67: return std::string("Outdoor limit HP off");
+        case 68: return std::string("HP stop by hybrid");
+        case 69: return std::string("Defrost with HP");
+        case 70: return std::string("Defrost with backup");
+        case 71: return std::string("Defrost HP backup");
+        case 72: return std::string("Source pump backup");
+        case 73: return std::string("HP flow over Tmax");
+        case 74: return std::string("Source pump post run");
+        case 75: return std::string("HP off high humidity");
+        case 76: return std::string("HP off water flow");
+        case 78: return std::string("Humidity setpoint");
+        case 79: return std::string("Generators relieved");
+        case 80: return std::string("HP relieved cooling");
+        case 81: return std::string("HP stop outdoor temp");
+        case 82: return std::string("HP off flow Tmax");
+        case 83: return std::string("Deair pump valve CH");
+        case 84: return std::string("Deair pump valve DHW");
+        default: return std::string("Unknown (" + to_string(sub_code) + ")");
+      }
+
 binary_sensor:
   # Integrated button
   - platform: gpio
@@ -260,37 +390,45 @@ binary_sensor:
 switch:
   - platform: template
     name: "${friendly_name} System ON/OFF"
-    
+
     # Read state from register 258
     lambda: |-
       return id(algorithm_type).state == 3;
-    
+
     turn_on_action:
       then:
-        - number.set:
-            id: algorithm_type
-            value: 3  # ON = 3 (Remote monitoring)
-        - light.turn_on:
-            id: status_led
-            brightness: 100%
-            red: 0%
-            green: 0%
-            blue: 100%
-    
+        - if:
+            condition:
+              lambda: 'return id(boot_complete);'
+            then:
+              - number.set:
+                  id: algorithm_type
+                  value: 3 # ON = 3 (Remote monitoring)
+              - light.turn_on:
+                  id: status_led
+                  brightness: 100%
+                  red: 0%
+                  green: 0%
+                  blue: 100%
+
     turn_off_action:
       then:
-        - number.set:
-            id: algorithm_type
-            value: 0  # OFF = 0
-        - number.set:
-            id: heat_demand
-            value: 0  # OFF = 0
-        - light.turn_on:
-            id: status_led
-            brightness: 30%
-            red: 100%
-            green: 50%
-            blue: 0%
+        - if:
+            condition:
+              lambda: 'return id(boot_complete);'
+            then:
+              - number.set:
+                  id: algorithm_type
+                  value: 0 # OFF = 0
+              - number.set:
+                  id: heat_demand
+                  value: 0 # OFF = 0
+              - light.turn_on:
+                  id: status_led
+                  brightness: 30%
+                  red: 100%
+                  green: 50%
+                  blue: 0%
 
 # Number controls
 number:
@@ -322,7 +460,7 @@ number:
     mode: box
     entity_category: config
 
-    # Register 258 (Algorithm Type)
+  # Register 258 (Algorithm Type)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "${friendly_name} Algorithm Type"
@@ -334,7 +472,7 @@ number:
     max_value: 3
     step: 1
 
-# Register 259 (Heat Demand)
+  # Register 259 (Heat Demand)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "${friendly_name} Heat Demand"
