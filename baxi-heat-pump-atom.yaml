@@ -8,11 +8,25 @@ esphome:
   project:
     name: "Liberdade4.UIMBaxiConnect-GTW08"
     version: "1.0"
+  on_boot:
+    priority: -100
+    then:
+      - globals.set:
+          id: boot_complete
+          value: 'true'
+      - logger.log: "Boot complete, switch is now active"
 
 esp32:
   board: esp32-s3-devkitc-1
   framework:
     type: arduino # esp-idf
+
+# Global variable to prevent switch actions during boot
+globals:
+  - id: boot_complete
+    type: bool
+    restore_value: no
+    initial_value: 'false'
 
 # Wi-Fi configuration
 wifi:
@@ -42,6 +56,10 @@ ota:
 logger:
   level: INFO
   baud_rate: 0
+
+button:
+  - platform: restart
+    name: "Restart"
 
 # Integrated status LED on AtomS3
 light:
@@ -79,7 +97,7 @@ modbus_controller:
     address: 0x64 # GTW-08 default Modbus address (100 decimal = 0x64 hex)
     modbus_id: modbus1
     command_throttle: 200ms
-    setup_priority: -10
+    setup_priority: 100  # Higher priority to ensure reads complete before switch evaluates
     update_interval: 15s
     offline_skip_updates: 5 # Skip updates if no response
 
@@ -379,30 +397,38 @@ switch:
 
     turn_on_action:
       then:
-        - number.set:
-            id: algorithm_type
-            value: 3 # ON = 3 (Remote monitoring)
-        - light.turn_on:
-            id: status_led
-            brightness: 100%
-            red: 0%
-            green: 0%
-            blue: 100%
+        - if:
+            condition:
+              lambda: 'return id(boot_complete);'
+            then:
+              - number.set:
+                  id: algorithm_type
+                  value: 3 # ON = 3 (Remote monitoring)
+              - light.turn_on:
+                  id: status_led
+                  brightness: 100%
+                  red: 0%
+                  green: 0%
+                  blue: 100%
 
     turn_off_action:
       then:
-        - number.set:
-            id: algorithm_type
-            value: 0 # OFF = 0
-        - number.set:
-            id: heat_demand
-            value: 0 # OFF = 0
-        - light.turn_on:
-            id: status_led
-            brightness: 30%
-            red: 100%
-            green: 50%
-            blue: 0%
+        - if:
+            condition:
+              lambda: 'return id(boot_complete);'
+            then:
+              - number.set:
+                  id: algorithm_type
+                  value: 0 # OFF = 0
+              - number.set:
+                  id: heat_demand
+                  value: 0 # OFF = 0
+              - light.turn_on:
+                  id: status_led
+                  brightness: 30%
+                  red: 100%
+                  green: 50%
+                  blue: 0%
 
 # Number controls
 number:
