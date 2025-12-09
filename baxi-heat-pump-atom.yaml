@@ -249,17 +249,6 @@ sensor:
     state_class: measurement
     accuracy_decimals: 0
 
-  # Algorithm Type (Register 258) - For debugging
-  # Should always be 2 (Remote management for Temperature ONLY)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Algorithm Type"
-    id: algorithm_type
-    address: 258
-    register_type: holding
-    value_type: U_WORD
-    entity_category: diagnostic
-
   # WiFi signal
   - platform: wifi_signal
     name: "${friendly_name} WiFi Signal"
@@ -395,16 +384,29 @@ binary_sensor:
       then:
         - light.toggle: status_led
 
-# Select for Heat Demand control (Register 259)
-# Valid options per Tab.20: 0=Standby, 7=Heating, 8=Cooling
+# Control selects (Algorithm Type & Heat Demand per Tab.19 & Tab.20)
 select:
+  # Algorithm Type (Register 258) - Remote management mode per Tab.19
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Algorithm Type"
+    id: algorithm_type_select
+    address: 258
+    value_type: U_WORD
+    entity_category: config
+    optionsmap:
+      "Both Temp & Power": 0
+      "Power Only": 1
+      "Temperature Only": 2
+      "Monitoring Only": 3
+
+  # Heat Demand control (Register 259) - Valid options per Tab.20: 0=Standby, 7=Heating, 8=Cooling
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "${friendly_name} Heat Demand"
     id: heat_demand_select
     address: 259
     value_type: U_WORD
-    entity_category: config
     optionsmap:
       "Standby": 0
       "Heating": 7
