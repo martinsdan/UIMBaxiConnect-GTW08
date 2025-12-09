@@ -101,12 +101,30 @@ modbus_controller:
     update_interval: 15s
     offline_skip_updates: 5 # Skip updates if no response
 
-# Heat pump sensors via GTW-08 (ONLY VALID REGISTERS - See GTW-08 Manual)
+# ============================================================================
+# SENSORS - Read-only values from heat pump via Modbus
+# ============================================================================
 sensor:
+  # Outdoor temperature (Register 384) - Read only, per GTW-08 manual
+  # Prioritized first for early polling
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Outdoor Temperature"
+    id: outdoor_temp
+    address: 384
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
   # Flow temperature (Register 400 - AM016)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Flow Temperature"
+    name: "Flow Temperature"
     id: temp_flow
     address: 400
     register_type: holding
@@ -121,24 +139,9 @@ sensor:
   # Return temperature (Register 401 - AM018)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Return Temperature"
+    name: "Return Temperature"
     id: temp_return
     address: 401
-    register_type: holding
-    value_type: S_WORD
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 2
-    filters:
-      - multiply: 0.01
-
-  # Outdoor temperature (Register 384)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Outdoor Temperature"
-    id: outdoor_temp
-    address: 384
     register_type: holding
     value_type: S_WORD
     unit_of_measurement: "°C"
@@ -151,7 +154,7 @@ sensor:
   # Heat pump flow temperature (Register 403 - HM001)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} HP Flow Temperature"
+    name: "HP Flow Temperature"
     id: hp_temp_flow
     address: 403
     register_type: holding
@@ -166,7 +169,7 @@ sensor:
   # Heat pump return temperature (Register 404 - HM002)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} HP Return Temperature"
+    name: "HP Return Temperature"
     id: hp_temp_return
     address: 404
     register_type: holding
@@ -181,7 +184,7 @@ sensor:
   # DHW Flow setpoint (Register 408 - DM004)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} DHW Setpoint"
+    name: "DHW Setpoint"
     id: dhw_setpoint_read
     address: 408
     register_type: holding
@@ -195,7 +198,7 @@ sensor:
   # Water pressure (Register 409 - AM019)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Water Pressure"
+    name: "Water Pressure"
     id: water_pressure
     address: 409
     register_type: holding
@@ -210,7 +213,7 @@ sensor:
   # Error code (Register 410 - for diagnostics)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Error Code"
+    name: "Error Code"
     id: error_code
     address: 410
     register_type: holding
@@ -220,7 +223,7 @@ sensor:
   # System status (Register 411 - AM012 - Main appliance status)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} System Status Code"
+    name: "System Status Code"
     id: system_status_code
     address: 411
     register_type: holding
@@ -230,7 +233,7 @@ sensor:
   # Sub status (Register 412 - AM014 - Sub status)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Sub Status Code"
+    name: "Sub Status Code"
     id: sub_status_code
     address: 412
     register_type: holding
@@ -240,7 +243,7 @@ sensor:
   # System power output (Register 413 - AM024)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Power Output"
+    name: "Power Output"
     id: power_output
     address: 413
     register_type: holding
@@ -251,21 +254,24 @@ sensor:
 
   # WiFi signal
   - platform: wifi_signal
-    name: "${friendly_name} WiFi Signal"
+    name: "WiFi Signal"
     update_interval: 60s
 
   # Uptime
   - platform: uptime
-    name: "${friendly_name} Uptime"
+    name: "Uptime"
 
+# ============================================================================
+# TEXT SENSORS - Text status representations
+# ============================================================================
 text_sensor:
   - platform: wifi_info
     ip_address:
-      name: "${friendly_name} IP Address"
+      name: "IP Address"
 
   # System Status (Register 411) - Friendly Name (Tab.16 AM012)
   - platform: template
-    name: "${friendly_name} System Status"
+    name: "System Status"
     id: system_status_text
     entity_category: diagnostic
     update_interval: 15s
@@ -303,7 +309,7 @@ text_sensor:
 
   # Sub Status (Register 412) - Friendly Name (Tab.17 AM014)
   - platform: template
-    name: "${friendly_name} Sub Status"
+    name: "Sub Status"
     id: sub_status_text
     entity_category: diagnostic
     update_interval: 15s
@@ -373,23 +379,28 @@ text_sensor:
         default: return std::string("Unknown (" + to_string(sub_code) + ")");
       }
 
+# ============================================================================
+# BINARY SENSORS - Button input
+# ============================================================================
 binary_sensor:
   # Integrated button
   - platform: gpio
     pin:
       number: GPIO41
       inverted: true
-    name: "${friendly_name} Button"
+    name: "Button"
     on_press:
       then:
         - light.toggle: status_led
 
-# Control selects (Algorithm Type & Heat Demand per Tab.19 & Tab.20)
+# ============================================================================
+# SELECTS - Read-write control options
+# ============================================================================
 select:
   # Algorithm Type (Register 258) - Remote management mode per Tab.19
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Algorithm Type"
+    name: "Algorithm Type"
     id: algorithm_type_select
     address: 258
     value_type: U_WORD
@@ -403,10 +414,11 @@ select:
   # Heat Demand control (Register 259) - Valid options per Tab.20: 0=Standby, 7=Heating, 8=Cooling
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Heat Demand"
+    name: "Heat Demand"
     id: heat_demand_select
     address: 259
     value_type: U_WORD
+    entity_category: config
     optionsmap:
       "Standby": 0
       "Heating": 7
@@ -448,12 +460,14 @@ select:
                         green: 50%
                         blue: 0%
 
-# Number controls
+# ============================================================================
+# NUMBER CONTROLS - Read-write numeric values
+# ============================================================================
 number:
   # DHW temperature setpoint (Register 408)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} DHW Temperature Setpoint"
+    name: "DHW Temperature Setpoint"
     address: 408
     register_type: holding
     value_type: U_WORD
@@ -472,7 +486,7 @@ number:
   # Display: 15.0-30.0°C, Lambda: divides by 10 for read, multiplies by 10 for write
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Zone 1 Heating Curve Base"
+    name: "Zone 1 Heating Curve Base"
     address: 675
     register_type: holding
     value_type: U_WORD
@@ -492,7 +506,7 @@ number:
   # Display: 0.3-2.0, Lambda: divides by 10 for read, multiplies by 10 for write
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Zone 1 Heating Curve Gradient"
+    name: "Zone 1 Heating Curve Gradient"
     address: 674
     register_type: holding
     value_type: U_WORD
