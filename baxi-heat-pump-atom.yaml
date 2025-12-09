@@ -7,21 +7,21 @@ esphome:
   friendly_name: ${friendly_name}
   project:
     name: "Liberdade4.UIMBaxiConnect-GTW08"
-    version: "1.0"
+    version: "1.2"
   on_boot:
     priority: -100
     then:
       - globals.set:
           id: boot_complete
           value: 'true'
-      - logger.log: "Boot complete, switch is now active"
+      - logger.log: "Boot complete, select is now active"
 
 esp32:
   board: esp32-s3-devkitc-1
   framework:
-    type: arduino # esp-idf
+    type: arduino
 
-# Global variable to prevent switch actions during boot
+# Global variable to prevent select actions during boot
 globals:
   - id: boot_complete
     type: bool
@@ -97,7 +97,7 @@ modbus_controller:
     address: 0x64 # GTW-08 default Modbus address (100 decimal = 0x64 hex)
     modbus_id: modbus1
     command_throttle: 200ms
-    setup_priority: 100  # Higher priority to ensure reads complete before switch evaluates
+    setup_priority: 100 # Higher priority to ensure reads complete before select evaluates
     update_interval: 15s
     offline_skip_updates: 5 # Skip updates if no response
 
@@ -225,7 +225,7 @@ sensor:
     address: 411
     register_type: holding
     value_type: U_WORD
-    internal: true  # Hide from Home Assistant
+    internal: true # Hide from Home Assistant
 
   # Sub status (Register 412 - AM014 - Sub status)
   - platform: modbus_controller
@@ -235,7 +235,7 @@ sensor:
     address: 412
     register_type: holding
     value_type: U_WORD
-    internal: true  # Hide from Home Assistant
+    internal: true # Hide from Home Assistant
 
   # System power output (Register 413 - AM024)
   - platform: modbus_controller
@@ -271,7 +271,6 @@ text_sensor:
     update_interval: 15s
     lambda: |-
       uint16_t status_code = (uint16_t)id(system_status_code).state;
-      
       switch(status_code) {
         case 0: return std::string("Standby");
         case 1: return std::string("Heat Demand");
@@ -310,7 +309,6 @@ text_sensor:
     update_interval: 15s
     lambda: |-
       uint16_t sub_code = (uint16_t)id(sub_status_code).state;
-      
       switch(sub_code) {
         case 0: return std::string("Standby");
         case 1: return std::string("AntiCycling");
@@ -386,104 +384,72 @@ binary_sensor:
       then:
         - light.toggle: status_led
 
-# Switch commands
-switch:
-  - platform: template
-    name: "${friendly_name} System ON/OFF"
-
-    # Read state from register 258
-    lambda: |-
-      return id(algorithm_type).state == 3;
-
-    turn_on_action:
-      then:
-        - if:
-            condition:
-              lambda: 'return id(boot_complete);'
-            then:
-              - number.set:
-                  id: algorithm_type
-                  value: 3 # ON = 3 (Remote monitoring)
-              - light.turn_on:
-                  id: status_led
-                  brightness: 100%
-                  red: 0%
-                  green: 0%
-                  blue: 100%
-
-    turn_off_action:
-      then:
-        - if:
-            condition:
-              lambda: 'return id(boot_complete);'
-            then:
-              - number.set:
-                  id: algorithm_type
-                  value: 0 # OFF = 0
-              - number.set:
-                  id: heat_demand
-                  value: 0 # OFF = 0
-              - light.turn_on:
-                  id: status_led
-                  brightness: 30%
-                  red: 100%
-                  green: 50%
-                  blue: 0%
-
-# Number controls
-number:
-  # System power setpoint (Register 256)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Power Setpoint"
-    address: 256
-    register_type: holding
-    value_type: U_WORD
-    min_value: 0
-    max_value: 100
-    step: 1
-    unit_of_measurement: "%"
-    mode: box
-    entity_category: config
-
-  # Flow temperature setpoint (Register 257)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "${friendly_name} Flow Temperature Setpoint"
-    address: 257
-    register_type: holding
-    value_type: U_WORD
-    min_value: 20
-    max_value: 80
-    step: 1
-    unit_of_measurement: "°C"
-    mode: box
-    entity_category: config
-
-  # Register 258 (Algorithm Type)
+# Control selects (Algorithm Type & Heat Demand per Tab.19 & Tab.20)
+select:
+  # Algorithm Type (Register 258) - Remote management mode per Tab.19
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "${friendly_name} Algorithm Type"
-    id: algorithm_type
+    id: algorithm_type_select
     address: 258
-    register_type: holding
     value_type: U_WORD
-    min_value: 0
-    max_value: 3
-    step: 1
+    entity_category: config
+    optionsmap:
+      "Both Temp & Power": 0
+      "Power Only": 1
+      "Temperature Only": 2
+      "Monitoring Only": 3
 
-  # Register 259 (Heat Demand)
+  # Heat Demand control (Register 259) - Valid options per Tab.20: 0=Standby, 7=Heating, 8=Cooling
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "${friendly_name} Heat Demand"
-    id: heat_demand
+    id: heat_demand_select
     address: 259
-    register_type: holding
     value_type: U_WORD
-    min_value: 0
-    max_value: 8
-    step: 1
+    optionsmap:
+      "Standby": 0
+      "Heating": 7
+      "Cooling": 8
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(boot_complete);'
+            then:
+              - if:
+                  condition:
+                    lambda: 'return x == "Heating";'
+                  then:
+                    - light.turn_on:
+                        id: status_led
+                        brightness: 100%
+                        red: 0%
+                        green: 0%
+                        blue: 100%
+              - if:
+                  condition:
+                    lambda: 'return x == "Cooling";'
+                  then:
+                    - light.turn_on:
+                        id: status_led
+                        brightness: 100%
+                        red: 0%
+                        green: 100%
+                        blue: 100%
+              - if:
+                  condition:
+                    lambda: 'return x == "Standby";'
+                  then:
+                    - light.turn_on:
+                        id: status_led
+                        brightness: 30%
+                        red: 100%
+                        green: 50%
+                        blue: 0%
 
+# Number controls
+number:
   # DHW temperature setpoint (Register 408)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
@@ -495,5 +461,48 @@ number:
     max_value: 60
     step: 1
     unit_of_measurement: "°C"
-    mode: slider
     entity_category: config
+
+  # Zone 1 Heating Curve Configuration (Registers 675 & 674)
+  # These registers control the intelligent heating curve for Zone 1
+  # Base temperature is the target flow at 20°C outdoor
+  # Gradient is the temperature increase per °C of outdoor temperature drop
+
+  # Base Temperature Setpoint (Register 675 - CP210)
+  # Display: 15.0-30.0°C, Lambda: divides by 10 for read, multiplies by 10 for write
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Zone 1 Heating Curve Base"
+    address: 675
+    register_type: holding
+    value_type: U_WORD
+    min_value: 15.0
+    max_value: 30.0
+    step: 0.1
+    unit_of_measurement: "°C"
+    entity_category: config
+    lambda: |-
+      return x * 0.1;
+    write_lambda: |-
+      uint16_t base_temp = (uint16_t)(x * 10);
+      payload.push_back(base_temp);
+      return base_temp;
+
+  # Heating Curve Gradient (Register 674 - CP230)
+  # Display: 0.3-2.0, Lambda: divides by 10 for read, multiplies by 10 for write
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "${friendly_name} Zone 1 Heating Curve Gradient"
+    address: 674
+    register_type: holding
+    value_type: U_WORD
+    min_value: 0.3
+    max_value: 2.0
+    step: 0.1
+    entity_category: config
+    lambda: |-
+      return x * 0.1;
+    write_lambda: |-
+      uint16_t gradient = (uint16_t)(x * 10);
+      payload.push_back(gradient);
+      return gradient;

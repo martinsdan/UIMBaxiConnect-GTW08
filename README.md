@@ -8,16 +8,29 @@ ESPHome firmware for **M5Stack AtomS3 Lite + Atomic RS485 Base** to integrate **
 
 ## Features
 
-- ✅ **Flow/Return Temperatures** (Primary & Heat Pump circuits)
-- ✅ **Outdoor Temperature** & **DHW Setpoint**
-- ✅ **Water Pressure** monitoring
-- ✅ **System Power Output**
-- ✅ **Status monitoring** with friendly names (from GTW-08 manual)
-- ✅ **Full Control**: System ON/OFF, Algorithm Type, Heat Demand, Power/Flow/DHW Setpoints
-- ✅ **Status LED** feedback with AtomS3 RGB LED
+- ✅ **Temperature Monitoring**:
+  - Outdoor Temperature (from GTW-08 sensor)
+  - Flow & Return Temperatures (primary circuit)
+  - HP Flow & Return Temperatures (heat pump circuit)
+  - DHW Setpoint reading
+- ✅ **System Control**:
+  - Algorithm Type (monitoring/control modes)
+  - Heat Demand (Standby/Heating/Cooling)
+  - DHW Temperature Setpoint (30-60°C)
+  - Zone 1 Heating Curve (Base & Gradient)
+- ✅ **Monitoring**:
+  - Water Pressure (bar)
+  - System Power Output (%)
+  - Error codes
+  - System Status with friendly names
+  - Sub Status with detailed operation states
+- ✅ **Status LED** feedback with AtomS3 RGB LED:
+  - 🔵 Blue: Heating mode
+  - 🟦 Cyan: Cooling mode
+  - 🟠 Orange: Standby
 - ✅ **OTA Updates** & **Web Server** for diagnostics
 - ✅ **WiFi Fallback AP** for configuration
-- ✅ **Boot protection** - Preserves heat pump state on restart (no spurious cycling)
+- ✅ **Boot Protection** - Prevents spurious changes on restart
 
 ## Hardware Required
 
@@ -98,7 +111,7 @@ ota_password: "your-ota-password"
 After first boot:
 - Check ESPHome Logs for Modbus communication
 - All sensors should appear in Home Assistant within 1-2 minutes
-- Status LED should turn green when connected to Modbus
+- Status LED should show appropriate color based on heat pump state
 
 ## Configuration Details
 
@@ -112,7 +125,7 @@ esp32:
 
 ### Boot Protection
 
-To prevent the heat pump from cycling on ESPHome restart, a global boot flag is used:
+To prevent unintended changes on ESPHome restart:
 
 ```yaml
 globals:
@@ -128,9 +141,10 @@ esphome:
       - globals.set:
           id: boot_complete
           value: 'true'
+      - logger.log: "Boot complete, select is now active"
 ```
 
-The **System ON/OFF switch** only executes its turn_on/turn_off actions after `boot_complete` is set to true. This preserves the device's actual operational state across restarts.
+Controls only become active after boot completes, preventing spurious heat pump cycling.
 
 ### UART (RS485 via Atomic Base)
 ```yaml
@@ -149,45 +163,56 @@ modbus_controller:
   - id: gtw08_controller
     address: 0x64           # GTW-08 default address
     modbus_id: modbus1
-    setup_priority: 100     # Ensures reads before switch evaluates
+    setup_priority: 100     # Ensures reads before select evaluates
     update_interval: 15s    # Poll every 15 seconds
     command_throttle: 200ms # Wait between requests
 ```
 
 ## Home Assistant Integration
 
-### Switches
-- **System ON/OFF** - Toggle heat pump (sets Algorithm Type: 3=ON, 0=OFF)
+### Selects (Read-Write)
+
+- **Algorithm Type** - Remote control modes:
+  - "Both Temp & Power" (0)
+  - "Power Only" (1)
+  - "Temperature Only" (2)
+  - "Monitoring Only" (3)
+
+- **Heat Demand** - System operation:
+  - "Standby" (0)
+  - "Heating" (7) - Blue LED
+  - "Cooling" (8) - Cyan LED
 
 ### Number Controls (Read-Write)
-- **Algorithm Type** (0-3) - 0=OFF, 3=Remote monitoring (ON)
-- **Heat Demand** (0-8) - Heat demand level
-- **Power Setpoint** (0-100%) - System power output
-- **Flow Temperature Setpoint** (20-80°C) - Primary circuit flow temp
-- **DHW Temperature Setpoint** (30-60°C) - Domestic hot water setpoint
+
+- **DHW Temperature Setpoint** (30-60°C) - Domestic hot water target
+- **Zone 1 Heating Curve Base** (15.0-30.0°C) - Target flow at 20°C outdoor
+- **Zone 1 Heating Curve Gradient** (0.3-2.0) - Increase per °C outdoor drop
 
 ### Sensors (Read-Only)
 
-**Temperatures:**
-- Flow Temperature (Primary circuit)
-- Return Temperature (Primary circuit)
-- HP Flow Temperature (Heat pump circuit)
-- HP Return Temperature (Heat pump circuit)
-- Outdoor Temperature
+**Temperatures (°C):**
+- Outdoor Temperature (from GTW-08)
+- Flow Temperature (primary circuit)
+- Return Temperature (primary circuit)
+- HP Flow Temperature (heat pump circuit)
+- HP Return Temperature (heat pump circuit)
 - DHW Setpoint
 
 **System Data:**
 - Water Pressure (bar)
 - Power Output (%)
-- System Status Code (numeric)
-- System Status (friendly name)
-- Sub Status Code (numeric)
-- Sub Status (friendly name)
+
+**Status:**
+- System Status (friendly name from code)
+- Sub Status (detailed operation state)
+- Error Code (numeric)
 
 **Diagnostics:**
-- Error Code
-- WiFi Signal
-- Uptime
+- WiFi Signal (dBm)
+- Uptime (seconds)
+- System Status Code (numeric)
+- Sub Status Code (numeric)
 
 ## System Status Codes
 
@@ -233,7 +258,7 @@ Reference: GTW-08 Manual, Table 16
 <summary><b>Click to expand Sub Status Codes (Register 412 - AM014)</b></summary>
 
 | Code | Sub Status |
-|------|-----------|
+|------|------------|
 | 0 | Standby |
 | 1 | AntiCycling |
 | 2 | CloseHydraulicValve |
@@ -301,53 +326,56 @@ Reference: GTW-08 Manual, Table 17
 
 ## Status LED Feedback
 
-The RGB LED on AtomS3 Lite provides visual feedback:
+The RGB LED on AtomS3 Lite provides visual feedback based on Heat Demand select:
 
-| Color | Meaning |
-|-------|---------|
-| 🟢 Green (50%) | Modbus connected, reading values |
-| 🔵 Blue (100%) | Heat pump turned ON |
-| 🟠 Orange (30%) | Heat pump in standby |
+| Color | Mode |
+|-------|------|
+| 🔵 Blue (100%) | Heating |
+| 🟦 Cyan (100%) | Cooling |
+| 🟠 Orange (30%) | Standby |
 
 ## Troubleshooting
 
-### System Turns Off on Every Reboot
+### Modbus Errors: "function code: 0x3 exception: 3"
 
-The boot protection mechanism prevents this. If you experience spurious cycling:
+**Exception 3 = Illegal Data Value**
 
-1. Check that `boot_complete` flag logic is in place in your YAML
-2. Verify `setup_priority: 100` is set on modbus_controller
-3. Check logs for "Boot complete, switch is now active" message
-4. Clear `.storage/` directory and reflash
+This means the register doesn't exist or isn't readable on your heat pump configuration:
+1. Verify the register number in GTW-08 manual for your model
+2. Some registers may not be supported by all Baxi models
+3. Comment out the sensor if not available on your system
 
-### Sensors Show "Unknown"
+### No Communication with GTW-08
 
 **Check GTW-08 Configuration:**
 - Rotary Dial must be at position 0
-- DIP switches 1-2 must be OFF/OFF
-- DIP switches 3-4 must be OFF/OFF
+- DIP switches 1-2 must be OFF/OFF (9600 baud)
+- DIP switches 3-4 must be OFF/OFF (no parity)
 
 **Check Wiring:**
 - GTW-08 OV (GND) → Atomic RS485 Base GND
 - GTW-08 A (Data+) → Atomic RS485 Base A
 - GTW-08 B (Data-) → Atomic RS485 Base B
-- All connections must be secure
+- Connections must be secure (no loose wires)
 
-**Check YAML:**
-- Board: `esp32-s3-devkitc-1`
-- UART TX: GPIO6, RX: GPIO5
+**Check YAML Configuration:**
+- Baud rate: 9600
 - Stop bits: 1
 - Parity: NONE
+- GPIO5: RX, GPIO6: TX
 - Modbus address: 0x64
 
-### Communication Errors
+### Outdoor Temperature Shows -0.1°C
 
-Check ESPHome logs for:
-- `Modbus timeout` - Verify wiring and GTW-08 settings
-- `CRC error` - Verify baud rate (9600) and parity (NONE)
-- `Exception code` - Verify register addresses in YAML
+This is **normal behavior** - the GTW-08 returns raw sensor values in 0.01°C increments. A reading of -0.1°C means the actual temperature is between -0.05°C and +0.04°C (near zero). This is sensor precision, not an error.
 
-**Quick Test:** Create a minimal sensor config with just one register (e.g., 400 for flow temperature). If it shows values, Modbus communication is working.
+### Changes in Home Assistant Don't Affect Heat Pump
+
+**If using UIMB Connect interface:**
+- The UIMB display may not update in real-time when changed via Modbus
+- The heat pump will still apply your changes (check actual heating behavior)
+- Navigate the UIMB menu to refresh the display
+- Treat UIMB as read-only when controlling via Modbus to avoid conflicts
 
 ## Supported Baxi Models
 
@@ -371,7 +399,7 @@ Verify GTW-08 compatibility with your system's documentation.
 - Single GTW-08 per system (cascade not supported)
 - Status codes limited to GTW-08 manual definitions
 - Energy counters not yet implemented (registers available)
-- Zoning requires manual configuration
+- Zoning requires manual configuration per zone
 
 ## Roadmap
 
