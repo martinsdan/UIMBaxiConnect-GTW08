@@ -182,20 +182,6 @@ sensor:
     filters:
       - multiply: 0.01
 
-  # DHW Flow setpoint (Register 408 - DM004)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "DHW Setpoint"
-    id: dhw_setpoint_read
-    address: 408
-    register_type: holding
-    value_type: U_WORD
-    unit_of_measurement: "°C"
-    device_class: temperature
-    accuracy_decimals: 2
-    filters:
-      - multiply: 0.01
-
   # Water pressure (Register 409 - AM019)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
@@ -865,24 +851,28 @@ select:
                         green: 50%
                         blue: 0%
 
+  # Zone 1 Operating Mode (Register 649 - CP215)
+  # Controls whether zone uses scheduling (heating curve) or manual mode
+  # 0 = Scheduling (uses curve from registers 674/675)
+  # 1 = Manual (fixed setpoint, ignores curve)
+  # 2 = Off
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Zone 1 Operating Mode"
+    id: zone1_operating_mode_select
+    address: 649
+    value_type: U_WORD
+    entity_category: config
+    optionsmap:
+      "Scheduling (uses heating curve)": 0
+      "Manual (fixed setpoint)": 1
+      "Off": 2
+
 # ============================================================================
 # NUMBER CONTROLS - Read-write numeric values
 # ============================================================================
 number:
-  # DHW temperature setpoint (Register 408)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "DHW Temperature Setpoint"
-    address: 408
-    register_type: holding
-    value_type: U_WORD
-    min_value: 30
-    max_value: 60
-    step: 1
-    unit_of_measurement: "°C"
-    entity_category: config
 
-number:
   # Zone 1 Heating Curve Configuration (Registers 675 & 674)
   # These registers control the intelligent heating curve for Zone 1
   # Base temperature is the target flow at 20°C outdoor
@@ -897,17 +887,14 @@ number:
     address: 675
     register_type: holding
     value_type: U_WORD
-    min_value: 15.0
-    max_value: 30.0
     step: 0.1
     unit_of_measurement: "°C"
     entity_category: config
     lambda: |-
       return x * 0.1;
     write_lambda: |-
-      uint16_t base_temp = (uint16_t)(x * 10);
-      payload.push_back(base_temp);
-      return base_temp;
+      return x * 10;
+
 
   # Heating Curve Gradient (Register 674 - CP230)
   # Display: 0.3-2.0, Lambda: divides by 10 for read, multiplies by 10 for write
@@ -918,13 +905,9 @@ number:
     address: 674
     register_type: holding
     value_type: U_WORD
-    min_value: 0.3
-    max_value: 2.0
     step: 0.1
     entity_category: config
     lambda: |-
       return x * 0.1;
     write_lambda: |-
-      uint16_t gradient = (uint16_t)(x * 10);
-      payload.push_back(gradient);
-      return gradient;
+      return x * 10;
