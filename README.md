@@ -1,6 +1,6 @@
 # Baxi Heat Pump Modbus Integration (GTW-08)
 
-[![ESPHome](https://img.shields.io/badge/ESPHome-2025.11.2-blue.svg)](https://esphome.io)
+[![ESPHome](https://img.shields.io/badge/ESPHome-2025.11.5-blue.svg)](https://esphome.io)
 [![License](https://img.shields.io/github/license/martinsdan/UIMBaxiConnect-GTW08)](LICENSE)
 [![ESP32-S3](https://img.shields.io/badge/ESP32-S3-orange)](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/)
 
@@ -12,25 +12,31 @@ ESPHome firmware for **M5Stack AtomS3 Lite + Atomic RS485 Base** to integrate **
   - Outdoor Temperature (from GTW-08 sensor)
   - Flow & Return Temperatures (primary circuit)
   - HP Flow & Return Temperatures (heat pump circuit)
-  - DHW Setpoint reading
+  - Heating Curve Target (calculated: base + gradient × (20 - outdoor temp))
+  
 - ✅ **System Control**:
-  - Algorithm Type (monitoring/control modes)
-  - Heat Demand (Standby/Heating/Cooling)
-  - DHW Temperature Setpoint (30-60°C)
-  - Zone 1 Heating Curve (Base & Gradient)
-- ✅ **Monitoring**:
+  - Algorithm Type (Both Temp & Power / Power Only / Temperature Only / Monitoring Only)
+  - Heat Demand (Standby / Heating / Cooling)
+  - Zone 1 Operating Mode (Scheduling / Manual / Off)
+  - Zone 1 Heating Curve Base (adjustable)
+  - Zone 1 Heating Curve Gradient (adjustable)
+  
+- ✅ **Monitoring & Diagnostics**:
   - Water Pressure (bar)
   - System Power Output (%)
-  - Error codes
-  - System Status with friendly names
-  - Sub Status with detailed operation states
+  - System Status (25 operational states)
+  - Sub Status (100+ detailed operation states)
+  - System errors
+  
 - ✅ **Status LED** feedback with AtomS3 RGB LED:
-  - 🔵 Blue: Heating mode
-  - 🟦 Cyan: Cooling mode
-  - 🟠 Orange: Standby
+  - 🔵 Blue (100%): Heating Active
+  - 🟦 Cyan (100%): Cooling Active
+  - 🟠 Orange (30%): Standby
+  
 - ✅ **OTA Updates** & **Web Server** for diagnostics
 - ✅ **WiFi Fallback AP** for configuration
 - ✅ **Boot Protection** - Prevents spurious changes on restart
+- ✅ **Hardware Button** (GPIO41) - Toggle status LED on press
 
 ## Hardware Required
 
@@ -165,7 +171,7 @@ modbus_controller:
     modbus_id: modbus1
     setup_priority: 100     # Ensures reads before select evaluates
     update_interval: 15s    # Poll every 15 seconds
-    command_throttle: 200ms # Wait between requests
+    command_throttle: 500ms # Wait between requests
 ```
 
 ## Home Assistant Integration
@@ -183,11 +189,15 @@ modbus_controller:
   - "Heating" (7) - Blue LED
   - "Cooling" (8) - Cyan LED
 
+- **Zone 1 Operating Mode** - Heating curve operation:
+  - "Scheduling (uses heating curve)" (0)
+  - "Manual (fixed setpoint)" (1)
+  - "Off" (2)
+
 ### Number Controls (Read-Write)
 
-- **DHW Temperature Setpoint** (30-60°C) - Domestic hot water target
-- **Zone 1 Heating Curve Base** (15.0-30.0°C) - Target flow at 20°C outdoor
-- **Zone 1 Heating Curve Gradient** (0.3-2.0) - Increase per °C outdoor drop
+- **Zone 1 Heating Curve Base** - Target flow at 20°C outdoor
+- **Zone 1 Heating Curve Gradient** - Increase per °C outdoor drop
 
 ### Sensors (Read-Only)
 
@@ -197,27 +207,30 @@ modbus_controller:
 - Return Temperature (primary circuit)
 - HP Flow Temperature (heat pump circuit)
 - HP Return Temperature (heat pump circuit)
-- DHW Setpoint
+- Heating Curve Target (calculated)
 
 **System Data:**
 - Water Pressure (bar)
 - Power Output (%)
 
+**Limits & Diagnostics:**
+- Max Flow Temperature Limit (device enforced)
+- Min Flow Temperature Limit (device enforced)
+- Zone 1 Max Setpoint (device enforced)
+- Zone 1 Min Setpoint (device enforced)
+
 **Status:**
 - System Status (friendly name from code)
 - Sub Status (detailed operation state)
-- Error Code (numeric)
 
-**Diagnostics:**
+**Monitoring:**
 - WiFi Signal (dBm)
 - Uptime (seconds)
-- System Status Code (numeric)
-- Sub Status Code (numeric)
 
 ## System Status Codes
 
 <details>
-<summary><b>Click to expand System Status Codes (Register 411 - AM012)</b></summary>
+<summary><b>Click to expand System Status Codes (Register 411)</b></summary>
 
 | Code | Status |
 |------|--------|
@@ -255,7 +268,7 @@ Reference: GTW-08 Manual, Table 16
 ## Sub Status Codes
 
 <details>
-<summary><b>Click to expand Sub Status Codes (Register 412 - AM014)</b></summary>
+<summary><b>Click to expand Sub Status Codes (Register 412)</b></summary>
 
 | Code | Sub Status |
 |------|------------|
@@ -334,48 +347,6 @@ The RGB LED on AtomS3 Lite provides visual feedback based on Heat Demand select:
 | 🟦 Cyan (100%) | Cooling |
 | 🟠 Orange (30%) | Standby |
 
-## Troubleshooting
-
-### Modbus Errors: "function code: 0x3 exception: 3"
-
-**Exception 3 = Illegal Data Value**
-
-This means the register doesn't exist or isn't readable on your heat pump configuration:
-1. Verify the register number in GTW-08 manual for your model
-2. Some registers may not be supported by all Baxi models
-3. Comment out the sensor if not available on your system
-
-### No Communication with GTW-08
-
-**Check GTW-08 Configuration:**
-- Rotary Dial must be at position 0
-- DIP switches 1-2 must be OFF/OFF (9600 baud)
-- DIP switches 3-4 must be OFF/OFF (no parity)
-
-**Check Wiring:**
-- GTW-08 OV (GND) → Atomic RS485 Base GND
-- GTW-08 A (Data+) → Atomic RS485 Base A
-- GTW-08 B (Data-) → Atomic RS485 Base B
-- Connections must be secure (no loose wires)
-
-**Check YAML Configuration:**
-- Baud rate: 9600
-- Stop bits: 1
-- Parity: NONE
-- GPIO5: RX, GPIO6: TX
-- Modbus address: 0x64
-
-### Outdoor Temperature Shows -0.1°C
-
-This is **normal behavior** - the GTW-08 returns raw sensor values in 0.01°C increments. A reading of -0.1°C means the actual temperature is between -0.05°C and +0.04°C (near zero). This is sensor precision, not an error.
-
-### Changes in Home Assistant Don't Affect Heat Pump
-
-**If using UIMB Connect interface:**
-- The UIMB display may not update in real-time when changed via Modbus
-- The heat pump will still apply your changes (check actual heating behavior)
-- Navigate the UIMB menu to refresh the display
-- Treat UIMB as read-only when controlling via Modbus to avoid conflicts
 
 ## Supported Baxi Models
 
@@ -391,6 +362,7 @@ Verify GTW-08 compatibility with your system's documentation.
 - **Modbus Polling:** Every 15 seconds
 - **Baud Rate:** 9600 (fixed by GTW-08)
 - **Response Time:** ~250ms per Modbus command
+- **Command Throttle:** 500ms between writes
 - **WiFi Signal Update:** Every 60 seconds
 - **Boot Protection Delay:** ~100ms to ensure modbus reads
 
@@ -431,7 +403,6 @@ Contributions are welcome! Please:
 - 🐛 **Bug Report:** [Open an Issue](https://github.com/martinsdan/UIMBaxiConnect-GTW08/issues)
 - 💬 **Questions:** GitHub Discussions
 - 📚 **Documentation:** Check the Wiki
-- 📖 **GTW-08 Manual:** See `/docs` folder
 
 ## License
 
