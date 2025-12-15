@@ -121,6 +121,23 @@ sensor:
     accuracy_decimals: 2
     filters:
       - multiply: 0.01
+      - skip_initial: 3
+      - lambda: |-
+          static float last = NAN;
+          const float MAX_DELTA = 2.0f;  // max allowed change per 15 s
+
+          if (isnan(last)) {
+            last = x;
+            return x;  // first reading
+          }
+
+          if (fabsf(x - last) > MAX_DELTA) {
+            ESP_LOGW("outdoor_temp", "Outlier ignored: last=%.2f new=%.2f", last, x);
+            return {};  // drop this sample, HA keeps previous value
+          }
+
+          last = x;
+          return x;
 
   # Flow temperature (Register 400 - AM016)
   - platform: modbus_controller
