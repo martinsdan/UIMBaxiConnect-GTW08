@@ -182,20 +182,31 @@ sensor:
     filters:
       - multiply: 0.01
 
-  # Water pressure (Register 409 - AM019)
+  # Water pressure (Register 409 - AM019, UINT8 0.1 bar)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "Water Pressure"
     id: water_pressure
     address: 409
     register_type: holding
-    value_type: U_WORD
+    value_type: U_WORD       # use unsigned 16‑bit, lower byte holds the UINT8
     unit_of_measurement: "bar"
     device_class: pressure
     state_class: measurement
     accuracy_decimals: 1
     filters:
-      - multiply: 0.1
+      - lambda: |-
+          uint16_t raw = (uint16_t)x & 0x00FF;   // take UINT8 from low byte
+          if (raw == 0xFF) {
+            ESP_LOGD("baxi_pressure", "Water Pressure unavailable sentinel: raw=%u", raw);
+            return NAN;
+          }
+          float v = raw * 0.1f;  // 0.1 bar resolution
+          if (v < 0.0f || v > 3.0f) {
+            ESP_LOGD("baxi_pressure", "Water Pressure out of range: raw=%u, value=%.2f", raw, v);
+            return NAN;
+          }
+          return v;
 
   # Error flags (Register 277) - List of errors for all devices
   - platform: modbus_controller
@@ -375,10 +386,19 @@ sensor:
     id: power_output
     address: 413
     register_type: holding
-    value_type: U_WORD
+    value_type: U_WORD      # UINT16 0–100
     unit_of_measurement: "%"
     state_class: measurement
     accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          // Raw 0–100% directly from register
+          if (x > 100.0f) {
+            ESP_LOGD("baxi_power", "Power Output out of range: raw=%.1f", x);
+            // Safety clamp in case of weird values
+            return NAN;
+          }
+          return x;
 
   # WiFi signal
   - platform: wifi_signal
