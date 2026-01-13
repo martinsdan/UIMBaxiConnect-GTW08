@@ -248,6 +248,7 @@ sensor:
     value_type: U_WORD
     entity_category: diagnostic
     skip_updates: 10  # Update every 10th cycle
+    internal: true  # Hide raw hex value, use text sensor instead
 
   # Board 2 device type (Register 135)
   - platform: modbus_controller
@@ -259,6 +260,7 @@ sensor:
     value_type: U_WORD
     entity_category: diagnostic
     skip_updates: 10  # Update every 10th cycle
+    internal: true  # Hide raw hex value, use text sensor instead
 
   # Board 3 device type (Register 141)
   - platform: modbus_controller
@@ -270,6 +272,7 @@ sensor:
     value_type: U_WORD
     entity_category: diagnostic
     skip_updates: 10  # Update every 10th cycle
+    internal: true  # Hide raw hex value, use text sensor instead
 
   # Error flags (Register 277) - List of errors for all devices
   - platform: modbus_controller
@@ -542,15 +545,28 @@ text_sensor:
   # BOARD DIAGNOSTIC TEXT SENSORS
   # ============================================================================
   
-  # Simple board diagnostic text sensors
+  # Board 1 device type decoded
   - platform: template
     name: "Board 1 Type"
     entity_category: diagnostic
     update_interval: 30s
     lambda: |-
       uint16_t device_type = (uint16_t)id(board1_device_type).state;
-      return "Type: 0x" + to_string(device_type);
+      uint8_t category = (device_type >> 8) & 0xFF;
+      uint8_t number = device_type & 0xFF;
+      
+      switch(category) {
+        case 0x00: return std::string("CU-GH" + (number > 0 ? to_string(number) : ""));
+        case 0x01: return std::string("CU-OH" + (number > 0 ? to_string(number) : ""));
+        case 0x02: return std::string("EHC" + (number > 0 ? to_string(number) : ""));
+        case 0x14: return std::string("MK" + (number > 0 ? to_string(number) : ""));
+        case 0x19: return std::string("SCB" + (number > 0 ? to_string(number) : ""));
+        case 0x1B: return std::string("EEC" + (number > 0 ? to_string(number) : ""));
+        case 0x1E: return std::string("Gateway" + (number > 0 ? to_string(number) : ""));
+        default: return std::string("Unknown (0x" + to_string(device_type) + ")");
+      }
 
+  # Board 2 device type decoded
   - platform: template
     name: "Board 2 Type"
     entity_category: diagnostic
@@ -560,8 +576,21 @@ text_sensor:
       if (device_type == 0xFFFF || device_type == 0) {
         return std::string("Not Available");
       }
-      return "Type: 0x" + to_string(device_type);
+      uint8_t category = (device_type >> 8) & 0xFF;
+      uint8_t number = device_type & 0xFF;
+      
+      switch(category) {
+        case 0x00: return std::string("CU-GH" + (number > 0 ? to_string(number) : ""));
+        case 0x01: return std::string("CU-OH" + (number > 0 ? to_string(number) : ""));
+        case 0x02: return std::string("EHC" + (number > 0 ? to_string(number) : ""));
+        case 0x14: return std::string("MK" + (number > 0 ? to_string(number) : ""));
+        case 0x19: return std::string("SCB" + (number > 0 ? to_string(number) : ""));
+        case 0x1B: return std::string("EEC" + (number > 0 ? to_string(number) : ""));
+        case 0x1E: return std::string("Gateway" + (number > 0 ? to_string(number) : ""));
+        default: return std::string("Unknown (0x" + to_string(device_type) + ")");
+      }
 
+  # Board 3 device type decoded
   - platform: template
     name: "Board 3 Type"
     entity_category: diagnostic
@@ -571,7 +600,19 @@ text_sensor:
       if (device_type == 0xFFFF || device_type == 0) {
         return std::string("Not Available");
       }
-      return "Type: 0x" + to_string(device_type);
+      uint8_t category = (device_type >> 8) & 0xFF;
+      uint8_t number = device_type & 0xFF;
+      
+      switch(category) {
+        case 0x00: return std::string("CU-GH" + (number > 0 ? to_string(number) : ""));
+        case 0x01: return std::string("CU-OH" + (number > 0 ? to_string(number) : ""));
+        case 0x02: return std::string("EHC" + (number > 0 ? to_string(number) : ""));
+        case 0x14: return std::string("MK" + (number > 0 ? to_string(number) : ""));
+        case 0x19: return std::string("SCB" + (number > 0 ? to_string(number) : ""));
+        case 0x1B: return std::string("EEC" + (number > 0 ? to_string(number) : ""));
+        case 0x1E: return std::string("Gateway" + (number > 0 ? to_string(number) : ""));
+        default: return std::string("Unknown (0x" + to_string(device_type) + ")");
+      }
 
   # ============================================================================
   # SEASONAL MODE TEXT (Register 385 decoded)
