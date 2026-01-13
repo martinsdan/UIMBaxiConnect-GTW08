@@ -1,0 +1,887 @@
+GTW-08 Modbus Configuration Manual
+
+MULTILINGUAL DOCUMENT
+English | French | German | Spanish | Italian | Portuguese | Dutch
+
+================================================================================
+CONTENTS
+================================================================================
+
+1 Safety . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2
+1.1 Liabilities . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2
+1.1.1 Manufacturer's liability . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2
+1.1.2 Installer's liability . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.1.3 User's liability . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .3
+2 About this manual . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+2.1 Symbols used in the manual . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .3
+3 Description of the product . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+3.1 General description . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .4
+4 Installation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+4.1 Setting the correct address . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+4.2 Setting the baud rate and parity . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+4.3 Status LED indications . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+5 Configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .6
+5.1 Modbus . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+5.2 Read multiple registers . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+5.3 Write multiple registers . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+5.4 Modbus exception codes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+5.5 Modbus data types . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+5.6 Main appliance information . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+5.7 Single appliance or cascade configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+5.7.1 Temperature and power control of the system . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+5.7.2 Reading out the water pressure . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .16
+5.7.3 Reading out the flow and return temperature . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+5.8 Zoning . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+5.8.1 Zoning addresses . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+5.8.2 Examples of zoning addresses . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+5.8.3 Main zone registers . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+5.8.4 Zone counters . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+5.8.5 Set temperature without outdoor temperature sensor . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+5.8.6 Fixed flow temperature . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+5.8.7 Room temperature control in a zone . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+5.9 Main cascade measures . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+5.10 Service . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+5.11 Error codes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+5.12 Fallback scenario . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+5.13 Using the appliance with 0-10 V signals . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27
+6 Disposal and recycling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27
+6.1 Recycling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .27
+
+================================================================================
+1 SAFETY
+================================================================================
+
+1.1 LIABILITIES
+
+1.1.1 Manufacturer's Liability
+
+Our products are manufactured in compliance with the requirements of the various Directives applicable. They are therefore delivered with the CE and RoHS marking and any documents necessary. In the interests of the quality of our products, we strive constantly to improve them. We therefore reserve the right to modify the specifications given in this document.
+
+Our liability as manufacturer may not be invoked in the following cases:
+- Failure to abide by the instructions on installing and maintaining the appliance.
+- Failure to abide by the instructions on using the appliance.
+- Faulty or insufficient maintenance of the appliance.
+
+1.1.2 Installer's Liability
+
+The installer is responsible for the installation and initial commissioning of the appliance. The installer must observe the following instructions:
+- Read and follow the instructions given in the manuals provided with the appliance.
+- Install the appliance in compliance with prevailing legislation and standards.
+- Carry out initial commissioning and any checks necessary.
+- Explain the installation to the user.
+- If maintenance is necessary, warn the user of the obligation to check the appliance and keep it in good working order.
+- Give all the instruction manuals to the user.
+
+1.1.3 User's Liability
+
+To guarantee optimum operation of the system, you must abide by the following instructions:
+- Read and follow the instructions given in the manuals provided with the appliance.
+- Call on a qualified professional to carry out installation and initial commissioning.
+- Get your installer to explain your installation to you.
+- Have the required inspections and maintenance carried out by a qualified installer.
+- Keep the instruction manuals in good condition close to the appliance.
+
+================================================================================
+2 ABOUT THIS MANUAL
+================================================================================
+
+2.1 Symbols Used in the Manual
+
+This manual uses various danger levels to draw attention to special instructions. We do this to improve user safety, to prevent problems and to guarantee correct operation of the appliance.
+
+DANGER - Risk of dangerous situations that may result in serious personal injury.
+DANGER OF ELECTRIC SHOCK - Risk of electric shock.
+WARNING - Risk of dangerous situations that may result in minor personal injury.
+CAUTION - Risk of material damage.
+IMPORTANT - Please note: important information.
+SEE - Reference to other manuals or pages in this manual.
+
+================================================================================
+3 DESCRIPTION OF THE PRODUCT
+================================================================================
+
+3.1 General Description
+
+The gateway is designed to operate as a communication interface between a heating and/or cooling appliance and the building management system (BMS) based on communication protocol Modbus.
+
+OVERVIEW:
+1 - Building management system (BMS)
+2 - Gateway
+3 - Heating and/or cooling appliance
+
+The gateway has the following features:
+- Monitor the appliances on the BMS.
+- Control the settings of the appliances from the BMS.
+
+The main components are:
+1 - L-Bus connectors
+2 - Dipswitch
+3 - Modbus connectors
+4 - Communication status LEDs
+5 - Status LED
+6 - Rotary knob
+
+================================================================================
+4 INSTALLATION
+================================================================================
+
+4.1 Setting the Correct Address
+
+To make sure you are using the correct address to communicate with the appliance, set the correct address.
+
+By changing the rotary knob you can set the gateway address for the connected appliance.
+
+GATEWAY ADDRESSES:
+Position | Gateway Address
+0        | 100 (Default value)
+1        | 101
+2        | 102
+3        | 103
+4        | 104
+5        | 105
+6        | 106
+7        | 107
+8        | 108
+9        | 109
+A        | 110
+B        | 111
+C        | 112
+D        | 113
+E        | 114
+F        | 115
+
+4.2 Setting the Baud Rate and Parity
+
+Set the correct baud rate and parity. Use switches 1 and 2 to set the baud rate. Use switches 3 and 4 to set the parity.
+
+BAUD RATE SETTINGS:
+Switches 1-2 | Modbus Baud Rate
+off - off    | 9600 Bd (Default value)
+on - off     | 19200 Bd
+off - on     | 38400 Bd
+on - on      | 57600 Bd
+
+The default baud rate setting is 9600 Bd
+
+PARITY SETTINGS:
+Switches 3-4 | Parity
+off - off    | None (Default value)
+on - off     | Odd
+off - on     | Even
+on - on      | None
+
+4.3 Status LED Indications
+
+The two-colour status LED on the gateway indicates the gateway's operational status.
+
+A green LED means the gateway is working normally. If the orange LED is blinking, there is a problem.
+
+LED COLOUR INDICATIONS:
+Colour  | State           | Description
+OFF     | -               | No power, or Defect
+Green   | Continuous      | Normal function
+Green   | Fast Blinking   | GTW-08 Modbus start-up phase (100 ms)
+        | (100 ms)        |
+Red     | Fixed           | No Modbus communication available
+Orange  | Fixed           | No communication on L-Bus
+Orange  | Slow blinking   | GTW-08 Modbus error (500 ms)
+        | (500 ms)        |
+
+================================================================================
+5 CONFIGURATION
+================================================================================
+
+5.1 Modbus
+
+The following Modbus function codes are supported:
+
+MODBUS FUNCTIONS:
+Code | Function
+03d  | Read holding register
+04d  | Read input register
+06d  | Write single register
+16d  | Write multiple register
+
+5.2 Read Multiple Registers
+
+The function code 03 (Hexadecimal) allows the leader device to request information from the follower device. The command message structure is shown below. The command message format is read from top byte to bottom, so the follower address comes first.
+
+'READ MULTIPLE REGISTERS' COMMAND FORMAT:
+Message Byte          | read position | Example hexadecimal input
+Follower address      | -             | 64
+Function code         | -             | 03
+Starting register     | Upper         | 00
+                      | Lower         | 20
+Quantity              | Upper         | 00
+                      | Lower         | 04
+CRC-16                | Lower         | xx
+                      | Upper         | xx
+
+In this example, starting register will point to the 32nd decimal register, and the quantity commands to read until decimal register 35.
+
+'READ MULTIPLE REGISTERS' NORMAL RESPONSE MESSAGES:
+Message Byte    | read position | Example hexadecimal output
+Follower address| -             | 64
+Function code   | -             | 03
+Byte count      | -             | 06
+Starting register | Upper       | xx
+                | Lower         | xx
+Next register   | Upper         | xx
+                | Lower         | xx
+Last register   | Upper         | xx
+                | Lower         | xx
+CRC-16          | Lower         | xx
+                | Upper         | xx
+
+In this example, the registers are returned with the data of the follower. The empty (xx) registers in the example will return with data of the follower in a normal response.
+
+5.3 Write Multiple Registers
+
+The function code 10 (Hexadecimal) allows the lead device to write information on the follower device. The command message structure is shown below. The command message format is read from top byte to bottom, so the lag address comes first.
+
+WRITE MULTIPLE REGISTERS COMMAND FORMAT:
+Message byte               | Read position | Example hexadecimal output
+Lag address                | -             | 64
+Function code              | -             | 10
+Starting register          | Upper         | 00
+                           | Lower         | 20
+Quantity                   | Upper         | 00
+                           | Lower         | 04
+Byte count                 | -             | 08
+Starting register value    | Upper         | xx
+                           | Lower         | xx
+Next register value        | Upper         | xx
+                           | Lower         | xx
+Next register value        | Upper         | xx
+                           | Lower         | xx
+Last register value        | Upper         | xx
+                           | Lower         | xx
+CRC-16                     | Lower         | xx
+                           | Upper         | xx
+
+In the instances above, the command request will write from decimal register 32 until decimal register 35. The empty (xx) registers above will need to be set with values from decimal register 32 until decimal register 35, before sending a request.
+
+WRITE MULTIPLE REGISTERS NORMAL RESPONSE MESSAGES:
+Message Byte    | read position | Example hexadecimal input
+Lag address     | -             | 00
+Function code   | -             | 03
+Starting register | Upper       | 00
+                | Lower         | 20
+Quantity        | Upper         | 00
+                | Lower         | 04
+CRC-16          | Lower         | xx
+                | Upper         | xx
+
+In the instances above, the lag device will respond with a message stating that register 32 until register 35 are affected by the write command.
+
+5.4 Modbus Exception Codes
+
+MODBUS EXCEPTION CODES:
+Exception code  | Name                            | Description
+01 (01 hex)     | Illegal function                | BMS requests a not-supported function code
+02 (02 hex)     | Illegal data address            | BMS requests BDR appliance for an out of bounds word address
+03 (03 hex)     | Illegal data value              | BMS sets an out of range value on word address to BDR appliance
+04 (04 hex)     | Lag device failure              | Writing a word address in process. Writing not finished on BDR appliance
+10 (0A hex)     | Gateway path unavailable        | BDR appliance not detected by GTW-08 Modbus
+11 (0B hex)     | Gateway target device failed to respond | Requested word address not yet read by GTW-08 Modbus from BDR appliance
+
+5.5 Modbus Data Types
+
+MODBUS DATA TYPES:
+Data type       | Description                           | Read Function Code | Write Function Code | Access through | Min - max value
+UINT8/ENUM8     | 8-bit unsigned integer                | 03d                | 16d                 | single register, where the data is found in the lower byte of the register | 0 – 255
+INT8            | 8-bit signed integer                  | 03d                | 16d                 | single register, where the data is found in the lower byte of the register | -128 – 127
+UINT16          | 16-bit unsigned integer               | 03d                | 16d                 | single register | 0 – 65536
+INT16           | 16-bit signed integer                 | 03d                | 16d                 | single register | -32768 – 32767
+UINT32          | 32-bit unsigned integer               | 03d                | 16d                 | two registers | 0 – 4294967295
+INT32           | 32-bit signed integer                 | 03d                | 16d                 | two registers | -2147483648 – 2147483647
+OCTETSTRING     | Consecutive pairs of 8-bit UINT8 stored one pair per 16-bit register | 03d | 16d | Read or written as a series of 1 to 25 consecutive registers, depending on the number of UINT8 specified for the OCTETSTRING | 0 – 50 characters
+VISIBLESTRING   | Consecutive pairs of 8-bit ASCII characters stored one pair per 16-bit register | 03d | 16d | Read or written as a series of 1 to 25 consecutive registers, depending on the number of characters specified for the VISIBLESTRING | 0 – 50 characters (including delimiter). Strings are terminated by a zero-delimiter.
+
+5.6 Main Appliance Information
+
+You can find all the relevant Modbus registers here for the main appliance.
+
+Display codes in this manual are the same as friendly names referenced in other manuals.
+
+The relevant Modbus registers for cascade and zoning are found in the other chapters.
+
+R is read and W is write access.
+
+APPLIANCE REGISTERS:
+Modbus Register | Data Type | Description | Resolution / Format | Min - Max | Access | Display Code
+272             | UINT8     | Current system power received from consumer manager of the zone | 1% | 0 - 100 | R | -
+275             | UINT8     | Bitfield heat demand per zone; Nbr zone, power setpoint, temp setpoint and type of heat demand | See following table | 0 – 255 | R | -
+277             | UINT16    | List of error for all connected devices in the system | - | 0 – 65535 | R | -
+279             | UINT8     | List of output status 2 information of all connected devices in the system | See following table | - | R | -
+280             | UINT8     | List of output status 2 information of all connected devices in the system | See following table | - | R | -
+384             | INT16     | Instantaneous outside temperature | 0,01 °C | -70 – 70 | R | -
+385             | ENUM8     | Seasonal mode active (summer / winter) | 0: Winter, 1: Frost protection, 2: Summer neutral band, 3: Summer | 0 – 3 | R | -
+400             | INT16     | Flow temperature of appliance. | 0,01 °C | -327,67 – 327,68 | R | AM016
+401             | INT16     | Return temperature of appliance. The temperature of the water entering the appliance. | 0,01 °C | -327,67 – 327,68 | R | AM018
+402             | INT16     | Temperature of the exhaust gas leaving the appliance | 0,01 °C | -20 – 120 | R | AM036
+403             | INT16     | Heat pump flow temperature | 0,01 °C | -20 – 120 | R | HM001
+404             | INT16     | Heat pump return temperature | 0,01 °C | -20 – 120 | R | HM002
+408             | UINT16    | Flow temperature setpoint Domestic Hot Water | 0,01 °C | 0 – 655,35 | R | DM004
+409             | UINT8     | Water pressure of the primary circuit. | 0,1 bar | 0 – 3 | R | AM019
+411             | ENUM8     | Current main status of the appliance. | See following table | - | R | AM012
+412             | ENUM8     | Current sub status of the appliance. | See following table | - | R | AM014
+413             | UINT16    | Actual relative power of the appliance | % | 0 – 100 | R | AM024
+415             | UINT8     | Total number of heat generator starts for heating and domestic hot water | 0,1 µA | 0 – 25 | R | GM008
+419             | UINT32    | Total number of heat generator starts for heating and domestic hot water | 1 Units | 0 – 4294967295 | R | PC002
+421             | UINT32    | Total Number of hours that the appliance has been producing energy for central heating and DHW | 1 Hours | 0 – 4294967295 | R | PC003
+423             | UINT32    | Number of starts of the first electrical backup stage | 1 Units | 0 – 4294967295 | R | AC030
+425             | UINT32    | Number of operating hours of the first electrical backup stage | 1 Hours | 0 – 4294967295 | R | AC028
+427             | UINT32    | Number of starts of the second electrical backup stage | 1 Units | 0 – 4294967295 | R | AC031
+429             | UINT32    | Number of operating hours of the second electrical backup stage | 1 Hours | 0 – 4294967295 | R | AC029
+431             | UINT32    | Number of hours that the appliance has been on mains power | 1 Hours | 0 – 4294967295 | R | AC001
+433             | UINT32    | Energy consumed for central heating (kWh) | 1 kWh | 0 – 4294967295 | R | AC005
+435             | UINT32    | Energy consumed for domestic hot water (kWh) | 1 kWh | 0 – 4294967295 | R | AC006
+437             | UINT32    | Energy consumed for cooling (kWh) | 1 kWh | 0 – 4294967295 | R | AC007
+439             | UINT32    | Total energy consumed (kWh) | 1 kWh | 0 – 4294967295 | R/W | -
+441             | UINT32    | Energy consumed by backup | 1 kWh | 0 – 4294967295 | R/W | AC018
+443             | UINT32    | Total thermal energy delivered (kWh) | 1 kWh | 0 – 4294967295 | R/W | -
+445             | UINT32    | Thermal energy delivered for central heating (kWh) | 1 kWh | 0 – 4294967295 | R/W | AC008
+447             | UINT32    | Thermal energy delivered for domestic hot water (kWh) | 1 kWh | 0 – 4294967295 | R/W | AC009
+449             | UINT32    | Thermal energy delivered for cooling (kWh) | 1 kWh | 0 – 4294967295 | R/W | AC010
+451             | UINT32    | Energy delivered by electrical or hydraulic backup | 1 kWh | 0 – 4294967295 | R/W | AC019
+459             | UINT16    | The current pump speed | 0,1% | 0 – 100 | R/W | AM010
+460             | UINT32    | Actual power of the appliance | 0,01 kW | 0 – 4294967295 | R | AM047
+9230            | UINT16    | Calculated instantaneous COP | 0,001 | 0 – 1 | R | HM031
+9231            | UINT16    | COP threshold which triggers the switch between heat pump and boiler operation | 0,001 | 0 – 1 | R | HM032
+
+BITFIELDS OF REGISTER 275:
+Bit 0: Direct zones allowed to run
+Bit 1: Mixing circuits allowed to run
+Bit 2: All valves open/pump running within safety
+Bit 3: Manual heat demand active
+Bit 4: Cooling allowed
+Bit 5: DHW circuits allowed to run
+Bit 6: Heat Engine active
+Bit 7: Padding
+
+BITFIELDS OF REGISTER 279:
+Bit 0: Flame On
+Bit 1: Heat pump On
+Bit 2: Electrical Backup 1 On
+Bit 3: Electrical Backup 2 On
+Bit 4: DHW electrical backup On
+Bit 5: Service required
+Bit 6: Power down / Reset needed
+Bit 7: Water pressure Low
+
+BITFIELDS OF REGISTER 280:
+Bit 0: Pump
+Bit 1: 3-way valve open
+Bit 2: 3-way valve
+Bit 3: 3-way valve closed
+Bit 4: DHW active
+Bit 5: CH active
+Bit 6: Cooling active
+
+AM012 - MAIN STATUS:
+Code | Display text | Explanation
+0    | Standby | The appliance is in standby mode.
+1    | Heat Demand | A heat demand is active.
+2    | Generator start | The appliance starts.
+3    | Generator CH | The appliance is active for central heating.
+4    | Generator DHW | The appliance is active for domestic hot water.
+5    | Generator stop | The appliance has stopped.
+6    | Pump Post Run | The pump is active after the appliance stopped.
+7    | Cooling Active | The appliance is active for cooling.
+8    | Controlled Stop | The appliance does not start because the starting conditions are not met.
+9    | Blocking Mode | A blocking mode is active.
+10   | Locking Mode | A locking mode is active.
+11   | Load test min | Low load test mode for central heating is active.
+12   | Load test CH max | Full load test mode for central heating is active.
+13   | Load test DHW max | Full load test mode for domestic hot water is active.
+15   | Manual Heat Demand | Manual heat demand for central heating is active.
+16   | Frost Protection | Frost protection mode is active.
+17   | Deaeration | The deaeration program operates.
+18   | Control unit Cooling | The fan runs to cool the inside of the appliance.
+19   | Reset In Progress | The appliance resets.
+20   | Auto Filling | The appliance fills the installation.
+21   | Halted | The appliance has stopped. It must be reset manually.
+22   | Forced calibration | The forced calibration function is active.
+23   | Factory test | The factory test mode is active.
+24   | Hydronic balancing | The hydronic balancing mode is active.
+200  | Device Mode | The service tool interface controls the functions of the appliance.
+254  | Unknown | The actual state of the appliance is undefined.
+
+[Additional status codes continue from 0-254, including detailed descriptions of sub-states]
+
+================================================================================
+5.7 SINGLE APPLIANCE OR CASCADE CONFIGURATION
+================================================================================
+
+5.7.1 Temperature and Power Control of the System
+
+If you control the system with the gateway, the heat demand from the zones will be ignored.
+
+TEMPERATURE AND POWER:
+Modbus register | Data type | Description | Resolution / Format | Access
+256             | UINT8     | Power | % | R/W
+257             | UINT16    | Temperature | 0.01 °C | R/W
+258             | ENUM8     | Algorithm type | See following table | R/W
+259             | ENUM8     | Heat demand type | See following table | R/W
+272             | UINT8     | Actual power system | 1 | R
+
+ALGORITHM TYPE:
+Value | Description
+0     | Remote management for both temperature and power
+1     | Remote management for Power
+2     | Remote management for Temperature
+3     | Remote monitoring only.
+
+HEAT DEMAND TYPE:
+Value | Description
+0     | Standby
+7     | Heating
+8     | Cooling
+
+The requested power on register 256 is related to the minimum and maximum power of the system. You can use register 272 to check the actual power input after a request.
+
+IMPORTANT: Register 258 must be written first. If 258 is still set to 3, the other registers cannot be used.
+
+TEMPERATURE AND POWER CONTROL EXAMPLES:
+Use case | Modbus register 258 | 256 | 257 | 259 | Comment
+I only want to monitor my system | 3 | x | x | x | -
+I want to switch Off my system | 0 | x | x | 0 | -
+I want to heat my system with minimum power | 1 | 0 = 0% | x | 7 | 0% is the minimal power output in kW of the system
+I want to heat my system with maximum power | 1 | 100 = 100% | x | 7 | 100% is the maximal power output in kW of the system
+I want to heat my system by setting power and temperature | 0 | 60 = 60% | 5000 = 50 °C | 7 | The system will reach the requested temperature and will not exceed the power request.
+I want to heat my system with a fixed temperature. | 2 | x | 7500 = 75 °C | 7 | -
+I want to cool my system with a fixed temperature. | 2 | x | 1500 =15 °C | 8 | -
+
+(Values of x are not used for that particular example)
+
+5.7.2 Reading out the Water Pressure
+
+WATER PRESSURE:
+Modbus register | Data type | Description | Resolution / Format | Min - Max | Display code
+409             | UINT8     | Water pressure of the primary circuit. | 0.1 Bar | 0.0 – 3.0 | AM019
+
+5.7.3 Reading out the Flow and Return Temperature
+
+FLOW AND RETURN TEMPERATURE FOR SINGLE APPLIANCE AND CASCADE:
+Modbus register | Data type | Description | Resolution / Format | Min - Max | Display code
+400             | INT16     | Current system flow temperature from consumer manager of the zone | 0.01 °C | -327.68 - 327.68 | AM016
+401             | INT16     | Current system return temperature from consumer manager of the zone | 0.01 °C | -327.68 - 327.68 | AM018
+7101            | INT16     | Cascade flow temperature | 0.01 °C | -327.68 – 327.68 | NM001
+7163            | INT16     | Cascade return temperature | 0.01 °C | -327.68 – 327.68 | NM165
+
+================================================================================
+5.8 ZONING
+================================================================================
+
+5.8.1 Zoning Addresses
+
+In this chapter you will find the number of zones set, the type, and which control board is related.
+
+READ NUMBER OF ZONES:
+Modbus register | Data Type | Description | Format | Access
+189             | UINT8     | Counter of zone detected | 0 - 127 | R
+
+ZONE FUNCTION WITH DISPLAY CODE CP02X AND DEVICE TYPE:
+Zone | 1   | 2    | 3    | 4    | 5    | 6    | 7    | 8    | 9    | 10   | 11   | 12
+Function | 641 | 1153 | 1665 | 2177 | 2689 | 3201 | 3713 | 4225 | 4737 | 5249 | 5761 | 6273
+Device | 645 | 1157 | 1669 | 2181 | 2693 | 3205 | 3717 | 4229 | 4741 | 5253 | 5765 | 6277
+
+ZONE DESCRIPTION:
+Zone description: All available types
+Device type: ZZ: Device category, YY: number in the category
+- 00: CU-GH
+- 01: CU-OH
+- 02: EHC
+- 14: MK
+- 19: SCB
+- 1B: EEC
+- 1E: Gateway
+
+Function type:
+- Disable
+- Direct
+- Mixing Circuit
+- Swimming pool
+- High Temperature
+- Fan Convector
+- DHW tank
+- Electrical DHW
+- Time Program
+- ProcessHeat
+- DHW Layered
+- DHW Internal tank
+- DHW Commercial Tank
+- Occupied
+
+5.8.2 Examples of Zoning Addresses
+
+FOR AN APPLIANCE EQUIPPED WITH CU-GH06:
+Zone | Address | Board
+Zone 1 | 641 and 645 = CircuitA0 | CU-GH06
+
+FOR AN APPLIANCE EQUIPPED WITH CU-GH06 AND SCB-02:
+Zone | Address | Board
+Zone 1 | 641 and 645 = CircuitA0 | CU-GH06
+Zone 2 | 1153 and 1157 = CircuitA1 | SCB-02
+Zone 3 | 1665 and 1669 = DHW | SCB-02
+
+FOR AN APPLIANCE EQUIPPED WITH CU-GH08 AND SCB-10 AND THE DHW IS MANAGED BY CU-GH08:
+Zone | Address | Board
+Zone 1 | 641 and 645 = CircuitA0 | CU-GH08
+Zone 2 | 1153 and 1157 = DHW | CU-GH08
+Zone 3 | 1665 and 1669 = CircuitA1 | SCB-10
+Zone 4 | 2177 and 2181 = CircuitB1 | SCB-10
+Zone 5 | 2689 and 2693 = DHW1 | SCB-10
+
+IMPORTANT: Check the rotary dial on the board for the correct position for that zone.
+
+FOR AN APPLIANCE EQUIPPED WITH CU-OH02 AND SCB-10:
+Zone | Address | Board
+Zone 1 | 641 and 645 = CircuitA1 | SCB-10
+Zone 2 | 1153 and 1157 = CircuitB1 | SCB-10
+Zone 3 | 1665 and 1669 = DHW1 | SCB-10
+
+FOR AN APPLIANCE EQUIPPED WITH EHC-04 AND SCB-04:
+Zone | Address | Board
+Zone 1 | 641 and 645 = CircuitA0 | EHC-04
+Zone 2 | 1153 and 1157 = DHW | EHC-04
+Zone 3 | 1665 and 1669 = CircuitB | SCB-04
+
+5.8.3 Main Zone Registers
+
+MAIN ZONE DISPLAY CODE INFORMATION:
+Modbus register | Data type | Description | Resolution | Min - Max | Access | Display code
+1100            | INT16     | Measure Zone Flow Temperature or DHW temperature | 0,01 °C | -10 – 140 | R | CM040
+1101            | UINT16    | Current Flow temperature setpoint of zone | 0,01 °C | 0 – 150 | R | CM070
+1102            | INT16     | Wished room temperature setpoint of the zone | 0,1 °C | 5 – 30 | R | CM190
+1107            | ENUM8     | Current activity of the zone | 0: Off, 1: Eco, 2: Comfort, 3: Anti legionella | 0 – 3 | R | CM130
+1108            | ENUM8     | Operating mode of the zone | 0: Scheduling, 1: Manual, 2: Off, 3: Temporary | 0 – 3 | R | CM120
+1110            | UINT8     | Status of the Pump of zone | 0: No, 1: Yes | 0 – 1 | R | CM050
+1111            | UINT8     | Measure Zone Flow Temperature or DHW temperature | 0: No, 1: Yes | 0 – 1 | R | CM010
+
+ALL MAIN ZONES REGISTERS:
+Zone | 1    | 2    | 3    | 4    | 5    | 6    | 7    | 8    | 9    | 10   | 11   | 12
+CM04X | 1100 | 1612 | 2124 | 2636 | 3148 | 3660 | 4172 | 4684 | 5196 | 5708 | 6220 | 6732
+CM07X | 1101 | 1613 | 2125 | 2637 | 3149 | 3661 | 4173 | 4685 | 5197 | 5709 | 6221 | 6733
+CM19X | 1102 | 1614 | 2126 | 2638 | 3150 | 3662 | 4174 | 4686 | 5198 | 5710 | 6222 | 6734
+CM13X | 1107 | 1619 | 2131 | 2643 | 3155 | 3667 | 5121 | 5633 | 6145 | 6657 | 7169 | 7681
+CM12X | 1108 | 1620 | 2132 | 2644 | 3156 | 3668 | 5122 | 5634 | 6146 | 6658 | 7170 | 7682
+CM05X | 1110 | 1622 | 2134 | 2646 | 3158 | 3670 | 5124 | 5636 | 6148 | 6660 | 7172 | 7684
+CM01X | 1111 | 1623 | 2135 | 2647 | 3159 | 3671 | 5125 | 5637 | 6149 | 6661 | 7173 | 7685
+
+(The 'X' in the display codes will be the number of the zone)
+
+5.8.4 Zone Counters
+
+ZONES:
+Modbus register | Data type | Description | Resolution / Format | Min - Max | Access | Display code
+1115            | UINT32    | Numbers of pump operating hours of the zone | 1 Hours | 0 - 4294967295 | R | CC001
+1117            | UINT32    | Numbers of times the pump of the zone has started | 1 Units | 0 - 4294967295 | R | CC010
+
+ALL MAIN ZONES COUNTER REGISTERS:
+Zone | 1    | 2    | 3    | 4    | 5    | 6    | 7    | 8    | 9    | 10   | 11   | 12
+CC00X | 1115 | 1627 | 2139 | 2651 | 3163 | 3675 | 4187 | 4699 | 5211 | 5723 | 6235 | 6747
+CC01X | 1117 | 1629 | 2141 | 2652 | 3165 | 3677 | 4189 | 4771 | 5213 | 5725 | 6237 | 6749
+
+5.8.5 Set Temperature Without Outdoor Temperature Sensor
+
+If there is no outdoor or room temperature sensor in the system, you can set a temperature for a zone.
+
+MODE FOR THE ZONE WITH DISPLAY CODE CP32X OR DP200:
+Zone | Address | Bytes | Data Type | Description | Resolution / Format | Access
+Zone 1 | 649 | 2 | UINT8 | Operating mode of the zone | 0: Scheduling, 1: Manual, 2: Off | R/W
+Zone 2 | 1161
+Zone 3 | 1673
+Zone 4 | 2185
+Zone 5 | 2697
+Zone 6 | 3209
+Zone 7 | 3721
+Zone 8 | 4233
+Zone 9 | 4745
+Zone 10 | 5257
+Zone 11 | 5769
+Zone 12 | 6281
+
+TEMPERATURE OF THE ZONE WITH DISPLAY CODE CP01X:
+Zone | Address | Bytes | Data Type | Description | Resolution / Format | Access
+Zone 1 | 648 | 2 | UINT16 | Zone flow temperature setpoint, used when the zone is set to a fixed flow setpoint. | 0,01 °C | R/W
+Zone 2 | 1160
+Zone 3 | 1672
+Zone 4 | 2184
+Zone 5 | 2696
+Zone 6 | 3208
+Zone 7 | 3720
+Zone 8 | 4232
+Zone 9 | 4744
+Zone 10 | 5256
+Zone 11 | 5768
+Zone 12 | 6280
+
+ZONE CONTROL EXAMPLES WITHOUT OUTDOOR TEMPERATURE SENSOR:
+Use case | Modbus register 649 | 648 | Comment
+I want to set zone 1 manually to 30 °C | 1 | 3000 | The zone will stay on 30 °C until you change the temperature, or you set the zone back to Scheduling
+I want to set zone 1 manually to Off | 2 | x | (Values of x are not used)
+
+5.8.6 Fixed Flow Temperature
+
+The gradient of the heating curve must be set to "0". Use the curve as the temperature request.
+
+HEATING CURVE WITH DISPLAY CODE CP23X:
+Zone | Address | Data Type | Description | Resolution / Format | Access
+Zone 1 | 674 | UINT8 | Heating curve temperature gradient of the zone | 0,1 | R/W
+Zone 2 | 1186
+Zone 3 | 1698
+Zone 4 | 2210
+Zone 5 | 2722
+Zone 6 | 3234
+Zone 7 | 3746
+Zone 8 | 4258
+Zone 9 | 4770
+Zone 10 | 5282
+Zone 11 | 5794
+Zone 12 | 6306
+
+HEATING CURVE WITH DISPLAY CODE CP21X:
+Zone | Address | Data Type | Description | Resolution / Format | Access
+Zone 1 | 675 | UINT16 | Comfort footpoint of the temperature of heat curve of the circuit | 0,1 °C | R/W
+Zone 2 | 1187
+Zone 3 | 1699
+Zone 4 | 2211
+Zone 5 | 2722
+Zone 6 | 3235
+Zone 7 | 3747
+Zone 8 | 4258
+Zone 9 | 4771
+Zone 10 | 5283
+Zone 11 | 5795
+Zone 12 | 6307
+
+EXAMPLE FIXED FLOW TEMPERATURE:
+Use case | Modbus register 649 | 674 | 675 | Comment
+I want to set zone 1 to a flow temperature of 50 °C | 1 | 0 | 500 | -
+
+5.8.7 Room Temperature Control in a Zone
+
+IMPORTANT: This is only possible if the room sensor or outdoor temperature sensor is connected. In this case the influence of the outdoor temperature sensor is used.
+
+After a heat demand, the appliance adjusts the temperature of the zone. If an outdoor temperature sensor or the room unit is present, the temperature will be based on the heating curve.
+
+ZONE CONTROL REGISTERS DISPLAY: CP32X OR DP200:
+Zone | Address | Bytes | Data Type | Description | Resolution / Format | Access
+Zone 1 | 649 | 2 | ENUM8 | Operating mode of the zone | 0: Scheduling, 1: Manual, 2: Off | R/W
+Zone 2 | 1161
+Zone 3 | 1673
+Zone 4 | 2185
+Zone 5 | 2697
+Zone 6 | 3209
+Zone 7 | 3721
+Zone 8 | 4233
+Zone 9 | 4745
+Zone 10 | 5257
+Zone 11 | 5769
+Zone 12 | 6281
+
+ZONE CONTROL REGISTERS FOR DISPLAY: CP20X:
+Zone | Address | Bytes | Data Type | Description | Resolution / Format | Access
+Zone 1 | 664 | 2 | UINT16 | Manually setting the room temperature setpoint of the zone | 0,1 °C | R/W
+Zone 2 | 1176
+Zone 3 | 1688
+Zone 4 | 2200
+Zone 5 | 2712
+Zone 6 | 3224
+Zone 7 | 3736
+Zone 8 | 4248
+Zone 9 | 4760
+Zone 10 | 5272
+Zone 11 | 5784
+Zone 12 | 6296
+
+EXAMPLE FOR SETTING ZONES:
+Use case | Modbus register 649 | 664 | Comment
+I want to set zone 1 manually to 20 °C | 1 | 200 | The zone will stay on 20 °C until you change the temperature, or you set the zone back to 0 (Scheduling)
+
+EXAMPLE FOR SETTING ZONES (Alternative):
+Use case | Modbus register 1161 | 1176 | Comment
+I want to set zone 2 to frost protection mode (frost protection mode is the OFF mode) | 2 | x | The zone will stay on OFF mode until you change the temperature, or you set the zone back to 0 (Scheduling)
+
+(Values of x are not used)
+
+================================================================================
+5.9 MAIN CASCADE MEASURES
+================================================================================
+
+MAIN CASCADE REGISTERS:
+Modbus register | Data type | Description | Resolution / Format | Min - Max | Access | Display code
+272             | UINT8     | Current system power received from consumer manager of the zone | 0,01 % | 0 -100 | R | -
+7000            | UINT8     | Node number of the device | 1 Units | 0 - 255 | R/W | -
+7001            | ENUM8     | Cascade Mode | 0: Automatic, 1: Heating, 2: Cooling | 0 - 2 | R/W | NP014
+7002            | ENUM8     | Cascade Type | 0: Traditional, 1: parallel | 0 - 1 | R/W | NP006
+7009            | ENUM8     | Type of cascade management which is requested. | 0: Temperature, 1: Power | 0 - 1 | R/W | NP011
+7011            | ENUM8     | The type of start order permutation | 0: Fixed time, 1: Operating hours | 0 - 1 | R/W | NP223
+7012            | UINT16    | Interval time producer switch | 1 hours | 1 - 9999 | R/W | NP281
+7014            | ENUM8     | Power control strategy | 0: Late on, early off, 1: Early on, late off, 2: Late on, late off | 0 - 2 | R/W | NP225
+7015            | UINT8     | Preferred producer for CH production | 1 Units | 0 - 255 | R/W | NP227
+7016            | UINT8     | Non preferred producer for CH production | 1 Units | 0 - 255 | R/W | NP228
+7017            | UINT8     | Late on value for next producer activation | % | 0 - 100 | R/W | NP282
+7018            | UINT8     | Late off value for deactivation of the producer | % | 0 - 100 | R/W | NP283
+7019            | UINT8     | Early on value for next producer activation | % | 0 - 100 | R/W | NP284
+7020            | UINT8     | Early off value for deactivation of the producer | % | 0 - 100 | R/W | NP285
+7102            | UINT8     | Cascade Number of Producer present recognized in the cascade | - | 0 - 255 | R | NM028
+7103            | UINT8     | Number of stage available on the Cascade | - | 0 - 255 | R | NM022
+7104            | UINT8     | Number of stage required on the Cascade | - | 0 - 255 | R | NM023
+7105            | UINT8     | Cascade Power System Request : Power | 1% | 0 - 100 | R | -
+7106            | INT16     | Cascade Power System Request : Temperature | 0,01 °C | -20 - 120 | R | -
+7107            | ENUM8     | Cascade Power System Request : Heat demand | 0: Automatic, 1: Heating, 2: Cooling, 3: Process heat, 4: Screed drying, 5: DHW medium priority, 6: DHW low priority, 7: Heating, 8: Cooling, 9: Electrical active, 10: Electrical reactive | - | R | -
+7108            | UINT8     | Cascade System Power Setpoint calculated : Power | 1% | 0 - 100 | R | -
+7109            | INT16     | Cascade System Power Setpoint calculated : Temperature | 0,01 °C | -20 - 120 | R | -
+7110            | ENUM8     | Cascade System Power Setpoint calculated : Heat demand | 0: Automatic, 1: Heating, 2: Cooling, 3: Process heat, 4: Screed drying, 5: DHW medium priority, 6: DHW low priority, 7: Heating, 8: Cooling, 9: Electrical active, 10: Electrical reactive | - | R | -
+7151            | UINT32    | The power (kW) requested from the cascade system. | 0,1 kW | - | R | NM112
+7155            | INT16     | Requested cascade power percentage | 0,1% | - | R | NM170
+7157            | ENUM8     | Status of the cascade primary pump | 0: Inactive, 1: Active | - | R | NM166
+7158            | ENUM8     | Status of the cascade secondary pump | 0: Inactive, 1: Active | - | R | NM167
+7159            | ENUM8     | Cascade state | See following table | - | R | NM163
+7160            | UINT32    | Cascade hours utilized for central heating | 1 hours | - | R | NC000
+7162            | UINT32    | Cascade hours utilized for domestic hot water | 1hours | - | R | NC001
+7164            | INT16     | Measured cascade return temperature on secondary side low loss header (LLH) | 0,01 °C | -327,68 - 327,68 | R | NM165
+7165            | UINT8     | Cascade, central primary pump status - producer circuit of low loss header | 1 | 0 - 14 | R | -
+7166            | UINT8     | pwm signal after transfer function to control pcb-hardware for pump producer circuit | 0,1% | 0 - 100 | R | -
+7167            | UINT8     | pwm signal after transfer function to control pcb-hardware for pump consumer circuit | 0,1% | 0 - 100 | R | -
+7168            | INT16     | Measured cascade flow temperature on secondary side low loss header (LLH) | 0,01 °C | -327,68 - 327,68 | R | EM012
+7169            | INT16     | Measured cascade return temperature on secondary side low loss header (LLH) | 0,01 °C | -327,68 - 327,68 | R | EM013
+7200            | UINT8     | The producer activation order | - | 0 - 255 | R/W | NP231
+7201            | UINT8     | List of identified producers on the cascade system: Number | - | 0 - 255 | R/W | -
+7202            | ENUM8     | List of identified producers on the cascade system : State | 0: Not connected, 1: Available, 2: Not available | - | R/W | -
+7203            | UINT16    | The minimum power the producer can supply (low load) | - | - | R/W | EP001
+7205            | UINT16    | The maximum power the producer can supply (full load) | - | - | R/W | EP086
+7207            | UINT16    | List of current active producers in the cascade system | - | 0 - 255 | R | NM113
+7208            | UINT16    | Temporary poducer activation order | - | 0 - 255 | R | NM171
+7209            | ENUM8     | Current main status of the producer. | See following table | - | R | EM058
+7228            | UINT32    | Serial number | 1 | 0 - 4294967295 | R | EM228
+
+APPLIANCE STATUS 7209:
+Status | Description | Explanation
+0      | Standby | The appliance is in standby mode.
+1      | HeatDemand | A heat demand is active.
+2      | BurnerStart | The appliance starts.
+3      | BurningDhw | The appliance is active for central heating.
+4      | BurningDhw | The appliance is active for domestic hot water.
+5      | BurnerStop | The appliance has stopped.
+6      | PumpPostRun | The pump is active after the appliance stopped.
+7      | CoolingActive | The appliance is active for cooling.
+8      | ControlledStop | The appliance does not start because the starting conditions are not met.
+9      | BlockingMode | A blocking mode is active.
+10     | LockingMode | A locking mode is active.
+11     | CsModeLCh | Low load test mode for central heating is active.
+12     | CsModeHCh | Full load test mode for central heating is active.
+13     | CsModeHDhw | Full load test mode for domestic hot water is active.
+14     | CsModeCustom | The amount of power to be used during the load test in the custom commisioning mode.
+15     | ManualHdChOn | Manual heat demand for central heating is active.
+16     | BoilerFrostProt | Frost protection mode is active.
+17     | DeAir | The deaeration program operates.
+18     | CuCooling | The fan runs to cool the inside of the appliance.
+19     | ResetInProgress | The appliance resets.
+20     | AutoFilling | The appliance fills the installation.
+21     | Halted | The appliance has stopped. It must be reset manually.
+22     | ForcedCalibration | The forced calibration function is active.
+23     | FactoryTest | The factory test mode is active.
+24     | HydraulicBalancingMode | The hydronic balancing mode is active.
+200    | Device Mode | The service tool interface controls the functions of the appliance.
+254    | Unkown | The actual state of the appliance is undefined.
+
+GENERAL INFORMATION FOR APPLIANCES IN CASCADE:
+Appliance | 1 (Master) | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
+Actual power output of cascade member | 7111 | 7115 | 7119 | 7123 | 7127 | 7131 | 7135 | 7139 | 7143
+Flow temperature of cascade member | 7112 | 7116 | 7120 | 7124 | 7128 | 7132 | 7136 | 7140 | 7144
+Status of cascade member | 7113 | 7117 | 7121 | 7125 | 7129 | 7133 | 7137 | 7141 | 7145
+Special request of cascade member | 7114 | 7118 | 7122 | 7126 | 7130 | 7134 | 7138 | 7142 | 7146
+
+CASCADE PUMP REGISTERS:
+Modbus register | Data type | Description | Resolution | Min - Max | Access | Display code
+7023            | ENUM8     | Primary pump type selection | 0: No pump, 1: On/off, 2: PWM, 3: 0-10V | 0 - 3 | R/W | NP287
+7024            | ENUM8     | Secondary pump type selection | 0: No pump, 1: On/off, 2: PWM, 3: 0-10V | 0 - 3 | R/W | NP288
+
+================================================================================
+5.10 SERVICE
+================================================================================
+
+SERVICE REGISTERS:
+Modbus register | Data type | Description | Resolution / Format | Access | Display Code
+512             | ENUM8     | Is service currently required? | 0: No, 1: Yes | R | AM011
+513             | UINT8     | Current or upcoming service notification | 0: None, 1: A, 2: B, 3: C, 4: Custom, 5:D | R | -
+514             | UINT16    | Number of hours that the appliance has been producing energy since last service | 2 hours | R | AC002
+515             | UINT16    | Number of hours since the previous servicing of the appliance | 2 hours | R | AC003
+516             | UINT32    | Number of heat generator starts since the previous servicing. | 1 Units | R | AC004
+
+================================================================================
+5.11 ERROR CODES
+================================================================================
+
+Each control board can give an error code. The object instance 531 will indicate if at least one error is present.
+
+GENERIC ERROR CODE OBJECT INSTANCE:
+Object instance | Data Type | Description | Resolution / Format | Min - Max | Access
+531             | UINT8     | Number entries of the 'current error' structure | 0: No error, 1: At least 1 error on any appliance | 0 - 1 | R
+
+If you find an error, you can use object instance 128 to find out how many control boards are connected.
+
+NUMBER OF BOARDS PRESENT IN THE APPLIANCE:
+Object instance | Data Type | Description | Resolution / Format | Min - Max | Access
+128             | UINT8     | Devices connected | 1 Units | 0 - 16 | R
+
+You can use the next table to find the object instance for the error code of the specific device.
+
+SPECIFIC ERROR CODE PER BOARD:
+Board | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8
+Description | Resolution / Format | Min- Max | Access
+- | 129 | 135 | 141 | 147 | 153 | 159 | 165 | 171 | Type of device [0xZZYY]. ZZ = Device category. YY = number in the category. 00: CU-GH, 01: CU-OH, 02: EHC, 14: MKI, 19: SCB, 1B: EEC, 1E: Gateway | - | R | -
+- | 532 | 534 | 536 | 538 | 540 | 542 | 544 | 546 | Error code. 0xFFFF: No error. 0xFFFE: Device not available. Other: Specific error | - | R | -
+- | 533 | 535 | 537 | 539 | 541 | 543 | 545 | 547 | Error custom code matrix. 0: Locking, 3: Blocking, 6: Warning | - | R | -
+
+If the device type shows code 0x0008, it means it is a CU-GH08.
+
+================================================================================
+5.12 FALLBACK SCENARIO
+================================================================================
+
+Set a fallback scenario if there is no communication between the gateway and the BMS. You can keep, adjust, or cancel the heat demand with the scenarios in the following table.
+
+FALLBACK SCENARIO MODBUS REGISTERS:
+Modbus register | Data Type | Description | Resolution / Format | Min - Max | Access
+21020           | ENUM8     | The BMS fallback heat demand mode | 0: BMS fallback HD mode, 1: Use Fallback HD | 0 – 1 | R/W
+21021           | ENUM8     | BMS fallback heat demand configuration | 0: Cancel directly, 1: Never cancel, 2: Maintain fallback HD | 0 – 2 | R/W
+21022           | UINT8     | BMS fallback heat demand period | 1, minute | 0 - …. | R/W
+21023           | UINT8     | The power setpoint | % | 0 – 100 | R/W
+21024           | INT16     | Temperature setpoint | 0,01 °C | - | R/W
+21025           | UINT8     | Type of heat demand which is requested for the zone | 0: None, 1: DHW primary, 2: DHW high priority, 3: Process heat, 4: Screed drying, 5: DHW medium priority, 6: DHW low priority, 7: Central heating, 8: Cooling, 9: Electrical active, 10: Electrical reactive | R/W
+
+================================================================================
+5.13 USING THE APPLIANCE WITH 0-10 V SIGNALS
+================================================================================
+
+OBJECT INSTANCES FOR 0-10 V SIGNALS:
+Modbus register | Data Type | Description | Resolution / Format | Min - Max | Access | Display code
+21026           | ENUM8     | Smart Control Board function 10 Volt PWM input | 0: Off, 1: Temperature control, 2: Power control | 0 - 2 | R/W | EP014
+21027           | UINT8     | Value of the 0 to 10 Volt input, meaning is dependant on the current input function setting. | 0.1 V | 0 - 25 | R/W | AM028
+
+================================================================================
+6 DISPOSAL AND RECYCLING
+================================================================================
+
+6.1 Recycling
+
+IMPORTANT: Removal and disposal of the appliance must be carried out by a qualified person in accordance with local and national regulations.
+
+Recycling instructions and symbols are provided in the original document with disposal information specific to France and other countries.
+
+================================================================================
+END OF DOCUMENT
+================================================================================
+
+Document Reference: NOT-7854678-01
+Version: 01
+Date: 15092023
+
+This text file contains the complete configuration manual for GTW-08 Modbus gateway in English language extracted from the original PDF.
+
+For latest updates and additional language versions, please refer to the original PDF documentation.
