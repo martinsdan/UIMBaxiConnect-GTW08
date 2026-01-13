@@ -199,31 +199,30 @@ sensor:
     filters:
       - multiply: 0.01
 
-  # Water pressure (Register 409 - AM019, UINT8 0.1 bar)
+  # Water pressure (Register 409 - AM019, UINT8 0.1 bar) - FIXED SENTINEL HANDLING
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "Water Pressure"
     id: water_pressure
     address: 409
     register_type: holding
-    value_type: U_WORD       # use unsigned 16‑bit, lower byte holds the UINT8
+    value_type: U_WORD
     unit_of_measurement: "bar"
     device_class: pressure
     state_class: measurement
     accuracy_decimals: 1
     filters:
       - lambda: |-
-          uint16_t raw = (uint16_t)x & 0x00FF;   // take UINT8 from low byte
-          if (raw == 0xFF) {
-            ESP_LOGD("baxi_pressure", "Water Pressure unavailable sentinel: raw=%u", raw);
-            return NAN;
+          uint16_t raw = (uint16_t)x;
+          uint8_t pressure_raw = raw & 0x00FF;   // Extract UINT8 from low byte
+          if (pressure_raw == 0xFF || pressure_raw == 255) {
+            return {};  // Data not available
           }
-          float v = raw * 0.1f;  // 0.1 bar resolution
-          if (v < 0.0f || v > 3.0f) {
-            ESP_LOGD("baxi_pressure", "Water Pressure out of range: raw=%u, value=%.2f", raw, v);
-            return NAN;
+          float pressure = pressure_raw * 0.1f;
+          if (pressure < 0.0f || pressure > 3.0f) {
+            return {};  // Out of valid range
           }
-          return v;
+          return pressure;
 
   # Error flags (Register 277) - List of errors for all devices
   - platform: modbus_controller
@@ -394,28 +393,126 @@ sensor:
     address: 412
     register_type: holding
     value_type: U_WORD
-    internal: true # Hide from Home Assistant
+    internal: true # Hide from Home Assistant - use template version for readable text
 
-  # System power output (Register 413 - AM024)
+  # System power output (Register 413 - AM024) - FIXED SENTINEL HANDLING
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "Power Output"
     id: power_output
     address: 413
     register_type: holding
-    value_type: U_WORD      # UINT16 0–100
+    value_type: U_WORD
     unit_of_measurement: "%"
     state_class: measurement
     accuracy_decimals: 0
     filters:
       - lambda: |-
-          // Raw 0–100% directly from register
-          if (x > 100.0f) {
-            ESP_LOGD("baxi_power", "Power Output out of range: raw=%.1f", x);
-            // Safety clamp in case of weird values
-            return NAN;
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF || raw == 65535) {
+            return {};  // Data not available
           }
-          return x;
+          if (raw > 100) {
+            return {};  // Out of valid percentage range
+          }
+          return (float)raw;
+
+  # Calculated instantaneous COP (Register 9230 - HM031) - FIXED SENTINEL HANDLING
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "COP - Instantaneous"
+    id: cop_instantaneous
+    address: 9230
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: ""
+    state_class: measurement
+    accuracy_decimals: 3
+    filters:
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF || raw == 65535 || raw == 0) {
+            return {};  // Data not available
+          }
+          float cop_value = raw * 0.001f;
+          if (cop_value < 0.5f || cop_value > 10.0f) {
+            return {};  // Out of reasonable range
+          }
+          return cop_value;
+
+  # COP threshold for heat pump/boiler switch (Register 9231 - HM032)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "COP Threshold"
+    id: cop_threshold
+    address: 9231
+    register_type: holding
+    value_type: U_WORD      # UINT16 0.001
+    unit_of_measurement: ""
+    state_class: measurement
+    accuracy_decimals: 3
+    filters:
+      - multiply: 0.001
+
+  # Current system power from consumer manager (Register 272)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Current System Power"
+    id: current_system_power
+    address: 272
+    register_type: holding
+    value_type: U_WORD      # UINT8 in low byte
+    unit_of_measurement: "%"
+    state_class: measurement
+    accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          uint8_t power_raw = raw & 0x00FF;   // take UINT8 from low byte
+          if (power_raw > 100) {
+            ESP_LOGD("baxi_system_power", "System Power out of range: raw=%u", power_raw);
+            return {};  // Return empty optional instead of NAN
+          }
+          return (float)power_raw;
+
+  # Pump speed (Register 459 - AM010)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Pump Speed"
+    id: pump_speed
+    address: 459
+    register_type: holding
+    value_type: U_WORD      # UINT16 0.1%
+    unit_of_measurement: "%"
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF) {
+            ESP_LOGD("baxi_pump", "Pump Speed unavailable: raw=%u", raw);
+            return {};  // Return empty optional instead of NAN
+          }
+          float speed = raw * 0.1f;
+          if (speed < 0.0f || speed > 100.0f) {
+            ESP_LOGD("baxi_pump", "Pump Speed out of range: raw=%u, speed=%.1f", raw, speed);
+            return {};  // Return empty optional instead of NAN
+          }
+          return speed;
+
+  # Seasonal Mode (Register 385) - Read as sensor, convert via template
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Seasonal Mode Code"
+    id: seasonal_mode_code
+    address: 385
+    register_type: holding
+    value_type: U_WORD
+    entity_category: diagnostic
+    internal: true
+    filters:
+      - lambda: |-
+          return (uint16_t)x & 0x00FF;   // Extract ENUM8 from low byte
 
   # WiFi signal
   - platform: wifi_signal
@@ -501,20 +598,29 @@ sensor:
     state_class: total_increasing
     accuracy_decimals: 0
 
-  # Actual power output (Register 460 - AM047, 0.01 kW resolution)
+  # Actual power output (Register 460 - AM047, 0.01 kW resolution) - FIXED SENTINEL HANDLING
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "Power - Actual Output"
     id: power_actual
     address: 460
     register_type: holding
-    value_type: U_DWORD  # 32-bit in 0.01 kW increments
+    value_type: U_WORD
     unit_of_measurement: "kW"
     device_class: power
     state_class: measurement
     accuracy_decimals: 2
     filters:
-      - multiply: 0.01  # Convert 0.01 kW units to kW
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF || raw == 65535 || raw == 0) {
+            return {};  // Data not available
+          }
+          float power = raw * 0.01f;
+          if (power < 0.0f || power > 50.0f) {
+            return {};  // Out of reasonable range for heat pump
+          }
+          return power;
 
 
 # ============================================================================
@@ -540,6 +646,24 @@ text_sensor:
         return std::string("No Errors");
       } else {
         return std::string("Error Detected - Check Board Error Codes");
+      }
+
+  # ============================================================================
+  # SEASONAL MODE TEXT (Register 385 decoded)
+  # ============================================================================
+  - platform: template
+    name: "Seasonal Mode"
+    id: seasonal_mode_text
+    entity_category: diagnostic
+    update_interval: 30s
+    lambda: |-
+      uint16_t mode_code = (uint16_t)id(seasonal_mode_code).state;
+      switch(mode_code) {
+        case 0: return std::string("Winter");
+        case 1: return std::string("Frost Protection");
+        case 2: return std::string("Summer Neutral Band");
+        case 3: return std::string("Summer");
+        default: return std::string("Unknown (" + to_string(mode_code) + ")");
       }
 
   # ============================================================================
@@ -997,13 +1121,22 @@ number:
     address: 675
     register_type: holding
     value_type: U_WORD
+    min_value: 15.0
+    max_value: 40.0
     step: 0.1
     unit_of_measurement: "°C"
     entity_category: config
     lambda: |-
-      return x * 0.1;
+      uint16_t raw = (uint16_t)x;
+      if (raw == 0xFFFF || raw == 0) {
+        return NAN;  // Invalid/unavailable
+      }
+      return raw * 0.1f;
     write_lambda: |-
-      return x * 10;
+      if (isnan(x) || x < 15.0f || x > 30.0f) {
+        return 0;  // Invalid input
+      }
+      return (uint16_t)(x * 10.0f);
 
 
   # Heating Curve Gradient (Register 674 - CP230)
@@ -1015,9 +1148,18 @@ number:
     address: 674
     register_type: holding
     value_type: U_WORD
+    min_value: 0.0
+    max_value: 2.0
     step: 0.1
     entity_category: config
     lambda: |-
-      return x * 0.1;
+      uint16_t raw = (uint16_t)x;
+      if (raw == 0xFFFF || raw == 0) {
+        return NAN;  // Invalid/unavailable
+      }
+      return raw * 0.1f;
     write_lambda: |-
-      return x * 10;
+      if (isnan(x) || x < 0.3f || x > 2.0f) {
+        return 0;  // Invalid input
+      }
+      return (uint16_t)(x * 10.0f);
