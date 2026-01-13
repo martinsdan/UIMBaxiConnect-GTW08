@@ -444,6 +444,79 @@ sensor:
       float target = base_temp + (20.0 - out_temp) * gradient;
       return target;
 
+
+  # ============================================================================
+  # ENERGY MONITORING - Cumulative consumption in kWh
+  # ============================================================================
+
+  # Central heating energy (Register 433 - AC005)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Energy - Central Heating"
+    id: energy_ch
+    address: 433
+    register_type: holding
+    value_type: U_DWORD  # 32-bit unsigned (kWh total)
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  # Domestic hot water energy (Register 435 - AC006)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Energy - Domestic Hot Water"
+    id: energy_dhw
+    address: 435
+    register_type: holding
+    value_type: U_DWORD
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  # Cooling energy (Register 437 - AC007)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Energy - Cooling"
+    id: energy_cooling
+    address: 437
+    register_type: holding
+    value_type: U_DWORD
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  # Total energy consumed (Register 439)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Energy - Total"
+    id: energy_total
+    address: 439
+    register_type: holding
+    value_type: U_DWORD
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  # Actual power output (Register 460 - AM047, 0.01 kW resolution)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Power - Actual Output"
+    id: power_actual
+    address: 460
+    register_type: holding
+    value_type: U_DWORD  # 32-bit in 0.01 kW increments
+    unit_of_measurement: "kW"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01  # Convert 0.01 kW units to kW
+
+
 # ============================================================================
 # TEXT SENSORS - Text status representations
 # ============================================================================
