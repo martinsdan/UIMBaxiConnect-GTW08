@@ -22,20 +22,30 @@ ESPHome firmware for **M5Stack AtomS3 Lite + Atomic RS485 Base** to integrate **
   - Zone 1 Heating Curve Gradient (adjustable)
   
 - ✅ **Monitoring & Diagnostics**:
-  - Water Pressure (bar)
-  - System Power Output (%)
+  - Water Pressure (bar) - *May not be available on all systems*
+  - Power Output (%) - *May not be available on all systems*
+  - COP - Instantaneous - *May not be available on all systems*
+  - Power - Actual Output (kW) - *May not be available on all systems*
+  - Pump Speed (%) - Real-time pump operation
   - System Status (25 operational states)
   - Sub Status (100+ detailed operation states)
-  - System errors
+  - Error Detection & Board Diagnostics
+  - Board Information (Number of boards, device types)
+  - Energy Counters (Central Heating, DHW, Cooling, Total)
   
 - ✅ **Status LED** feedback with AtomS3 RGB LED:
   - 🔵 Blue (100%): Heating Active
   - 🟦 Cyan (100%): Cooling Active
   - 🟠 Orange (30%): Standby
   
+- ✅ **Smart Data Handling**:
+  - Sentinel value detection (shows "unavailable" for unsupported registers)
+  - Outlier filtering for temperature sensors
+  - Range validation for all sensor values
+  - Boot protection prevents spurious commands during startup
+  
 - ✅ **OTA Updates** & **Web Server** for diagnostics
 - ✅ **WiFi Fallback AP** for configuration
-- ✅ **Boot Protection** - Prevents spurious changes on restart
 - ✅ **Hardware Button** (GPIO41) - Toggle status LED on press
 
 ## Hardware Required
@@ -170,8 +180,8 @@ modbus_controller:
     address: 0x64           # GTW-08 default address
     modbus_id: modbus1
     setup_priority: 100     # Ensures reads before select evaluates
-    update_interval: 15s    # Poll every 15 seconds
-    command_throttle: 500ms # Wait between requests
+    update_interval: 30s    # Poll every 30 seconds (optimized for stability)
+    command_throttle: 1000ms # Wait between requests (increased for reliability)
 ```
 
 ## Home Assistant Integration
@@ -209,25 +219,79 @@ modbus_controller:
 - HP Return Temperature (heat pump circuit)
 - Heating Curve Target (calculated)
 
-**System Data:**
-- Water Pressure (bar)
-- Power Output (%)
+**Power & Performance:**
+- Water Pressure (bar) - *May show "unavailable" depending on system configuration*
+- Power Output (%) - *May show "unavailable" depending on system configuration*
+- COP - Instantaneous - *May show "unavailable" depending on system configuration*
+- Power - Actual Output (kW) - *May show "unavailable" depending on system configuration*
+- Pump Speed (%) - Real-time pump operation
+- Current System Power (%) - Power received from consumer manager
 
-**Limits & Diagnostics:**
-- Max Flow Temperature Limit (device enforced)
-- Min Flow Temperature Limit (device enforced)
-- Zone 1 Max Setpoint (device enforced)
-- Zone 1 Min Setpoint (device enforced)
+**Energy Monitoring:**
+- Energy - Central Heating (kWh)
+- Energy - Domestic Hot Water (kWh)
+- Energy - Cooling (kWh)
+- Energy - Total (kWh)
+- COP Threshold - Heat pump/boiler switch threshold
 
-**Status:**
+**System Diagnostics:**
 - System Status (friendly name from code)
 - Sub Status (detailed operation state)
+- Seasonal Mode (Winter/Summer/Frost Protection)
+- System Error Status
+- Number of Control Boards (shows connected boards)
+- Board 1/2/3 Device Types (identifies board types)
+- Error Flags (system-wide error detection)
 
-**Monitoring:**
+**Network & Device:**
 - WiFi Signal (dBm)
 - Uptime (seconds)
+- IP Address
 
-## System Status Codes
+## Data Availability
+
+Some sensors may show **"unavailable"** depending on your specific heat pump model, system configuration, or operational state. This is normal behavior:
+
+### Always Available:
+- ✅ Temperature sensors (outdoor, flow, return, HP circuits)
+- ✅ System status and sub-status
+- ✅ Pump speed (when pump is running)
+- ✅ Energy counters
+- ✅ Error detection and diagnostics
+
+### May Show "Unavailable":
+- ❓ **Water Pressure** - Availability depends on system configuration
+- ❓ **Power Output** - Availability depends on heat pump model/configuration
+- ❓ **COP - Instantaneous** - May not be supported on all models
+- ❓ **Power - Actual Output** - May not be supported on all models
+
+**Note:** The GTW-08 gateway returns sentinel values (0xFFFF) for registers that are not available or supported on your specific system. The integration properly handles these and shows "unavailable" instead of incorrect values.
+
+## Board Diagnostics
+
+The integration now includes board diagnostic capabilities to identify connected control boards:
+
+### Board Information Sensors:
+- **Number of Control Boards**: Shows how many boards are connected (typically 3)
+- **Board 1/2/3 Device Types**: Shows device type codes for each board
+
+### Device Type Codes:
+Board types are displayed as hexadecimal codes (e.g., "Type: 0x1E08"):
+
+| Code | Device Type |
+|------|-------------|
+| 0x00XX | CU-GH (Gas/Heat pump control unit) |
+| 0x01XX | CU-OH (Oil/Heat pump control unit) |
+| 0x02XX | EHC (Electric heating controller) |
+| 0x14XX | MK (Mixing kit) |
+| 0x19XX | SCB (System control board) |
+| 0x1BXX | EEC (External expansion controller) |
+| 0x1EXX | Gateway (GTW-08) |
+
+**Example**: A board showing "Type: 0x1E08" indicates a GTW-08 Gateway (category 0x1E, number 08).
+
+### Update Frequency:
+Board diagnostic sensors update every 5 minutes to minimize Modbus traffic and improve system stability.
 
 <details>
 <summary><b>Click to expand System Status Codes (Register 411)</b></summary>
@@ -359,12 +423,18 @@ Verify GTW-08 compatibility with your system's documentation.
 
 ## Performance & Timing
 
-- **Modbus Polling:** Every 15 seconds
+- **Modbus Polling:** Every 30 seconds (optimized for stability)
+- **Board Diagnostics:** Every 5 minutes (reduced frequency for stability)
 - **Baud Rate:** 9600 (fixed by GTW-08)
 - **Response Time:** ~250ms per Modbus command
-- **Command Throttle:** 500ms between writes
+- **Command Throttle:** 1000ms between writes (increased for reliability)
 - **WiFi Signal Update:** Every 60 seconds
-- **Boot Protection Delay:** ~100ms to ensure modbus reads
+- **Boot Protection Delay:** ~100ms to ensure modbus reads complete
+
+**Optimization Notes:**
+- Slower polling reduces Modbus errors and improves system stability
+- Board diagnostic sensors use `skip_updates: 10` to minimize traffic
+- Increased command throttle prevents "Gateway Path Unavailable" errors
 
 ## Known Limitations
 

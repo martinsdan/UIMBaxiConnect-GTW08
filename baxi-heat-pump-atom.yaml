@@ -96,9 +96,9 @@ modbus_controller:
   - id: gtw08_controller
     address: 0x64 # GTW-08 default Modbus address (100 decimal = 0x64 hex)
     modbus_id: modbus1
-    command_throttle: 500ms
+    command_throttle: 1000ms  # Increased from 500ms
     setup_priority: 100 # Higher priority to ensure reads complete before select evaluates
-    update_interval: 15s
+    update_interval: 30s      # Increased from 15s
     offline_skip_updates: 5 # Skip updates if no response
 
 # ============================================================================
@@ -199,31 +199,80 @@ sensor:
     filters:
       - multiply: 0.01
 
-  # Water pressure (Register 409 - AM019, UINT8 0.1 bar)
+  # Water pressure (Register 409 - AM019, UINT8 0.1 bar) - FIXED SENTINEL HANDLING
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "Water Pressure"
     id: water_pressure
     address: 409
     register_type: holding
-    value_type: U_WORD       # use unsigned 16‑bit, lower byte holds the UINT8
+    value_type: U_WORD
     unit_of_measurement: "bar"
     device_class: pressure
     state_class: measurement
     accuracy_decimals: 1
     filters:
       - lambda: |-
-          uint16_t raw = (uint16_t)x & 0x00FF;   // take UINT8 from low byte
-          if (raw == 0xFF) {
-            ESP_LOGD("baxi_pressure", "Water Pressure unavailable sentinel: raw=%u", raw);
-            return NAN;
+          uint16_t raw = (uint16_t)x;
+          uint8_t pressure_raw = raw & 0x00FF;   // Extract UINT8 from low byte
+          if (pressure_raw == 0xFF || pressure_raw == 255) {
+            return {};  // Data not available
           }
-          float v = raw * 0.1f;  // 0.1 bar resolution
-          if (v < 0.0f || v > 3.0f) {
-            ESP_LOGD("baxi_pressure", "Water Pressure out of range: raw=%u, value=%.2f", raw, v);
-            return NAN;
+          float pressure = pressure_raw * 0.1f;
+          if (pressure < 0.0f || pressure > 3.0f) {
+            return {};  // Out of valid range
           }
-          return v;
+          return pressure;
+
+  # Number of control boards (Register 128) - Since this works on your system
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Number of Control Boards"
+    id: num_control_boards
+    address: 128
+    register_type: holding
+    value_type: U_WORD
+    entity_category: diagnostic
+    skip_updates: 10  # Update every 10th cycle (every 5 minutes with 30s interval)
+    filters:
+      - lambda: |-
+          return (uint16_t)x & 0x00FF;   // Extract UINT8 from low byte
+
+  # Board 1 device type (Register 129)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Board 1 Device Type"
+    id: board1_device_type
+    address: 129
+    register_type: holding
+    value_type: U_WORD
+    entity_category: diagnostic
+    skip_updates: 10  # Update every 10th cycle
+    internal: true  # Hide raw hex value, use text sensor instead
+
+  # Board 2 device type (Register 135)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Board 2 Device Type"
+    id: board2_device_type
+    address: 135
+    register_type: holding
+    value_type: U_WORD
+    entity_category: diagnostic
+    skip_updates: 10  # Update every 10th cycle
+    internal: true  # Hide raw hex value, use text sensor instead
+
+  # Board 3 device type (Register 141)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Board 3 Device Type"
+    id: board3_device_type
+    address: 141
+    register_type: holding
+    value_type: U_WORD
+    entity_category: diagnostic
+    skip_updates: 10  # Update every 10th cycle
+    internal: true  # Hide raw hex value, use text sensor instead
 
   # Error flags (Register 277) - List of errors for all devices
   - platform: modbus_controller
@@ -234,147 +283,6 @@ sensor:
     register_type: holding
     value_type: U_WORD
     entity_category: diagnostic
-
-  # ============================================================================
-  # ERROR DETECTION - CORRECTED REGISTERS (per manual section 5.11)
-  # ============================================================================
-  # Register 531: Generic error indicator (0=no error, 1=at least 1 error)
-  # Internal: Use text sensor for readable output instead
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "System Error Indicator"
-    id: error_indicator
-    address: 531
-    register_type: holding
-    value_type: U_WORD
-    entity_category: diagnostic
-    internal: true
-
-  # Register 128: Number of control boards connected
-  # VISIBLE: Shows how many boards are connected (0-8)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "Number of Control Boards"
-    id: num_boards
-    address: 128
-    register_type: holding
-    value_type: U_WORD
-    entity_category: diagnostic
-
-  # ============================================================================
-  # BOARD 1 ERROR CODES (Registers 532-533)
-  # ============================================================================
-  # Register 532: Board 1 Error Code
-  # 0xFFFF (65535) = No error on this board
-  # 0xFFFE (65534) = Device not available
-  # Other values = device-specific error codes
-  # Internal: Use text sensor for readable output instead
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "Board 1 Error Code"
-    id: board1_error_code
-    address: 532
-    register_type: holding
-    value_type: U_WORD
-    entity_category: diagnostic
-    internal: true
-
-  # Register 533: Board 1 Error Category
-  # 0=Locking, 3=Blocking, 6=Warning
-  # Internal: Use text sensor for readable output instead
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "Board 1 Error Category"
-    id: board1_error_category
-    address: 533
-    register_type: holding
-    value_type: U_WORD
-    entity_category: diagnostic
-    internal: true
-
-  # Register 129: Board 1 Device Type
-  # Internal: Use text sensor for readable output instead
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "Board 1 Device Type"
-    id: board1_device_type
-    address: 129
-    register_type: holding
-    value_type: U_WORD
-    entity_category: diagnostic
-    internal: true
-
-  # ============================================================================
-  # BOARD 2 ERROR CODES (Registers 534-535)
-  # ============================================================================
-  # Register 534: Board 2 Error Code
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "Board 2 Error Code"
-    id: board2_error_code
-    address: 534
-    register_type: holding
-    value_type: U_WORD
-    entity_category: diagnostic
-    internal: true
-
-  # Register 535: Board 2 Error Category
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "Board 2 Error Category"
-    id: board2_error_category
-    address: 535
-    register_type: holding
-    value_type: U_WORD
-    entity_category: diagnostic
-    internal: true
-
-  # Register 130: Board 2 Device Type
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "Board 2 Device Type"
-    id: board2_device_type
-    address: 130
-    register_type: holding
-    value_type: U_WORD
-    entity_category: diagnostic
-    internal: true
-
-  # ============================================================================
-  # BOARD 3 ERROR CODES (Registers 536-537)
-  # ============================================================================
-  # Register 536: Board 3 Error Code
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "Board 3 Error Code"
-    id: board3_error_code
-    address: 536
-    register_type: holding
-    value_type: U_WORD
-    entity_category: diagnostic
-    internal: true
-
-  # Register 537: Board 3 Error Category
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "Board 3 Error Category"
-    id: board3_error_category
-    address: 537
-    register_type: holding
-    value_type: U_WORD
-    entity_category: diagnostic
-    internal: true
-
-  # Register 131: Board 3 Device Type
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "Board 3 Device Type"
-    id: board3_device_type
-    address: 131
-    register_type: holding
-    value_type: U_WORD
-    entity_category: diagnostic
-    internal: true
 
   # System status (Register 411 - AM012 - Main appliance status)
   - platform: modbus_controller
@@ -394,28 +302,126 @@ sensor:
     address: 412
     register_type: holding
     value_type: U_WORD
-    internal: true # Hide from Home Assistant
+    internal: true # Hide from Home Assistant - use template version for readable text
 
-  # System power output (Register 413 - AM024)
+  # System power output (Register 413 - AM024) - FIXED SENTINEL HANDLING
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "Power Output"
     id: power_output
     address: 413
     register_type: holding
-    value_type: U_WORD      # UINT16 0–100
+    value_type: U_WORD
     unit_of_measurement: "%"
     state_class: measurement
     accuracy_decimals: 0
     filters:
       - lambda: |-
-          // Raw 0–100% directly from register
-          if (x > 100.0f) {
-            ESP_LOGD("baxi_power", "Power Output out of range: raw=%.1f", x);
-            // Safety clamp in case of weird values
-            return NAN;
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF || raw == 65535) {
+            return {};  // Data not available
           }
-          return x;
+          if (raw > 100) {
+            return {};  // Out of valid percentage range
+          }
+          return (float)raw;
+
+  # Calculated instantaneous COP (Register 9230 - HM031) - FIXED SENTINEL HANDLING
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "COP - Instantaneous"
+    id: cop_instantaneous
+    address: 9230
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: ""
+    state_class: measurement
+    accuracy_decimals: 3
+    filters:
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF || raw == 65535 || raw == 0) {
+            return {};  // Data not available
+          }
+          float cop_value = raw * 0.001f;
+          if (cop_value < 0.5f || cop_value > 10.0f) {
+            return {};  // Out of reasonable range
+          }
+          return cop_value;
+
+  # COP threshold for heat pump/boiler switch (Register 9231 - HM032)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "COP Threshold"
+    id: cop_threshold
+    address: 9231
+    register_type: holding
+    value_type: U_WORD      # UINT16 0.001
+    unit_of_measurement: ""
+    state_class: measurement
+    accuracy_decimals: 3
+    filters:
+      - multiply: 0.001
+
+  # Current system power from consumer manager (Register 272)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Current System Power"
+    id: current_system_power
+    address: 272
+    register_type: holding
+    value_type: U_WORD      # UINT8 in low byte
+    unit_of_measurement: "%"
+    state_class: measurement
+    accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          uint8_t power_raw = raw & 0x00FF;   // take UINT8 from low byte
+          if (power_raw > 100) {
+            ESP_LOGD("baxi_system_power", "System Power out of range: raw=%u", power_raw);
+            return {};  // Return empty optional instead of NAN
+          }
+          return (float)power_raw;
+
+  # Pump speed (Register 459 - AM010)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Pump Speed"
+    id: pump_speed
+    address: 459
+    register_type: holding
+    value_type: U_WORD      # UINT16 0.1%
+    unit_of_measurement: "%"
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF) {
+            ESP_LOGD("baxi_pump", "Pump Speed unavailable: raw=%u", raw);
+            return {};  // Return empty optional instead of NAN
+          }
+          float speed = raw * 0.1f;
+          if (speed < 0.0f || speed > 100.0f) {
+            ESP_LOGD("baxi_pump", "Pump Speed out of range: raw=%u, speed=%.1f", raw, speed);
+            return {};  // Return empty optional instead of NAN
+          }
+          return speed;
+
+  # Seasonal Mode (Register 385) - Read as sensor, convert via template
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Seasonal Mode Code"
+    id: seasonal_mode_code
+    address: 385
+    register_type: holding
+    value_type: U_WORD
+    entity_category: diagnostic
+    internal: true
+    filters:
+      - lambda: |-
+          return (uint16_t)x & 0x00FF;   // Extract ENUM8 from low byte
 
   # WiFi signal
   - platform: wifi_signal
@@ -501,20 +507,29 @@ sensor:
     state_class: total_increasing
     accuracy_decimals: 0
 
-  # Actual power output (Register 460 - AM047, 0.01 kW resolution)
+  # Actual power output (Register 460 - AM047, 0.01 kW resolution) - FIXED SENTINEL HANDLING
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "Power - Actual Output"
     id: power_actual
     address: 460
     register_type: holding
-    value_type: U_DWORD  # 32-bit in 0.01 kW increments
+    value_type: U_WORD
     unit_of_measurement: "kW"
     device_class: power
     state_class: measurement
     accuracy_decimals: 2
     filters:
-      - multiply: 0.01  # Convert 0.01 kW units to kW
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF || raw == 65535 || raw == 0) {
+            return {};  // Data not available
+          }
+          float power = raw * 0.01f;
+          if (power < 0.0f || power > 50.0f) {
+            return {};  // Out of reasonable range for heat pump
+          }
+          return power;
 
 
 # ============================================================================
@@ -527,217 +542,95 @@ text_sensor:
       name: "IP Address"
 
   # ============================================================================
-  # SYSTEM ERROR STATUS (Register 531 decoded)
+  # BOARD DIAGNOSTIC TEXT SENSORS
   # ============================================================================
+  
+  # Board 1 device type decoded
   - platform: template
-    name: "System Error Status"
-    id: error_status_text
+    name: "Board 1 Type"
     entity_category: diagnostic
     update_interval: 30s
-    lambda: |-
-      uint16_t error_indicator_val = (uint16_t)id(error_indicator).state;
-      if (error_indicator_val == 0) {
-        return std::string("No Errors");
-      } else {
-        return std::string("Error Detected - Check Board Error Codes");
-      }
-
-  # ============================================================================
-  # BOARD 1 ERROR CODE TEXT (Register 532 decoded)
-  # ============================================================================
-  - platform: template
-    name: "Board 1 Error Code Text"
-    id: board1_error_code_text
-    entity_category: diagnostic
-    update_interval: 30s
-    lambda: |-
-      uint16_t error_code = (uint16_t)id(board1_error_code).state;
-      
-      // Special values per manual
-      if (error_code == 0xFFFF || error_code == 65535) {
-        return std::string("No Error on Board 1");
-      }
-      if (error_code == 0xFFFE || error_code == 65534) {
-        return std::string("Board 1 Device Not Available");
-      }
-      
-      // Return code value for manual lookup
-      return std::string("Error Code: 0x" + to_string(error_code) + 
-                        " - See manual for device-specific error meaning");
-
-  # ============================================================================
-  # BOARD 1 ERROR CATEGORY TEXT (Register 533 decoded)
-  # ============================================================================
-  - platform: template
-    name: "Board 1 Error Category Text"
-    id: board1_error_category_text
-    entity_category: diagnostic
-    update_interval: 30s
-    lambda: |-
-      uint16_t category = (uint16_t)id(board1_error_category).state;
-      switch(category) {
-        case 0: return std::string("Locking Error - Device locked, manual intervention needed");
-        case 3: return std::string("Blocking Error - Device blocked, operation prevented");
-        case 6: return std::string("Warning - Non-critical issue, system can continue");
-        default: return std::string("Unknown Error Category: " + to_string(category));
-      }
-
-  # ============================================================================
-  # BOARD 1 DEVICE TYPE TEXT (Register 129 decoded)
-  # ============================================================================
-  - platform: template
-    name: "Board 1 Device Type Text"
-    id: board1_device_type_text
-    entity_category: diagnostic
-    update_interval: 60s
     lambda: |-
       uint16_t device_type = (uint16_t)id(board1_device_type).state;
-      uint8_t category = device_type >> 8;    // Upper byte (ZZ)
-      uint8_t number = device_type & 0xFF;    // Lower byte (YY)
+      uint8_t category = (device_type >> 8) & 0xFF;
+      uint8_t number = device_type & 0xFF;
       
-      std::string device_name;
       switch(category) {
-        case 0x00: device_name = "CU-GH"; break;
-        case 0x01: device_name = "CU-OH"; break;
-        case 0x02: device_name = "EHC"; break;
-        case 0x14: device_name = "MK"; break;
-        case 0x19: device_name = "SCB"; break;
-        case 0x1B: device_name = "EEC"; break;
-        case 0x1E: device_name = "Gateway (GTW-08)"; break;
-        default: device_name = "Unknown (0x" + to_string(category) + ")"; break;
+        case 0x00: return std::string("CU-GH" + (number > 0 ? to_string(number) : ""));
+        case 0x01: return std::string("CU-OH" + (number > 0 ? to_string(number) : ""));
+        case 0x02: return std::string("EHC" + (number > 0 ? to_string(number) : ""));
+        case 0x14: return std::string("MK" + (number > 0 ? to_string(number) : ""));
+        case 0x19: return std::string("SCB" + (number > 0 ? to_string(number) : ""));
+        case 0x1B: return std::string("EEC" + (number > 0 ? to_string(number) : ""));
+        case 0x1E: return std::string("Gateway" + (number > 0 ? to_string(number) : ""));
+        default: return std::string("Unknown (0x" + to_string(device_type) + ")");
       }
-      
-      return std::string(device_name + " - Unit #" + to_string(number));
 
-  # ============================================================================
-  # BOARD 2 ERROR CODE TEXT (Register 534 decoded)
-  # ============================================================================
+  # Board 2 device type decoded
   - platform: template
-    name: "Board 2 Error Code Text"
-    id: board2_error_code_text
+    name: "Board 2 Type"
     entity_category: diagnostic
     update_interval: 30s
-    lambda: |-
-      uint16_t error_code = (uint16_t)id(board2_error_code).state;
-      
-      if (error_code == 0xFFFF || error_code == 65535) {
-        return std::string("No Error on Board 2");
-      }
-      if (error_code == 0xFFFE || error_code == 65534) {
-        return std::string("Board 2 Device Not Available");
-      }
-      
-      return std::string("Error Code: 0x" + to_string(error_code) + 
-                        " - See manual for device-specific error meaning");
-
-  # ============================================================================
-  # BOARD 2 ERROR CATEGORY TEXT (Register 535 decoded)
-  # ============================================================================
-  - platform: template
-    name: "Board 2 Error Category Text"
-    id: board2_error_category_text
-    entity_category: diagnostic
-    update_interval: 30s
-    lambda: |-
-      uint16_t category = (uint16_t)id(board2_error_category).state;
-      switch(category) {
-        case 0: return std::string("Locking Error - Device locked, manual intervention needed");
-        case 3: return std::string("Blocking Error - Device blocked, operation prevented");
-        case 6: return std::string("Warning - Non-critical issue, system can continue");
-        default: return std::string("Unknown Error Category: " + to_string(category));
-      }
-
-  # ============================================================================
-  # BOARD 2 DEVICE TYPE TEXT (Register 130 decoded)
-  # ============================================================================
-  - platform: template
-    name: "Board 2 Device Type Text"
-    id: board2_device_type_text
-    entity_category: diagnostic
-    update_interval: 60s
     lambda: |-
       uint16_t device_type = (uint16_t)id(board2_device_type).state;
-      uint8_t category = device_type >> 8;
+      if (device_type == 0xFFFF || device_type == 0) {
+        return std::string("Not Available");
+      }
+      uint8_t category = (device_type >> 8) & 0xFF;
       uint8_t number = device_type & 0xFF;
       
-      std::string device_name;
       switch(category) {
-        case 0x00: device_name = "CU-GH"; break;
-        case 0x01: device_name = "CU-OH"; break;
-        case 0x02: device_name = "EHC"; break;
-        case 0x14: device_name = "MK"; break;
-        case 0x19: device_name = "SCB"; break;
-        case 0x1B: device_name = "EEC"; break;
-        case 0x1E: device_name = "Gateway (GTW-08)"; break;
-        default: device_name = "Unknown (0x" + to_string(category) + ")"; break;
+        case 0x00: return std::string("CU-GH" + (number > 0 ? to_string(number) : ""));
+        case 0x01: return std::string("CU-OH" + (number > 0 ? to_string(number) : ""));
+        case 0x02: return std::string("EHC" + (number > 0 ? to_string(number) : ""));
+        case 0x14: return std::string("MK" + (number > 0 ? to_string(number) : ""));
+        case 0x19: return std::string("SCB" + (number > 0 ? to_string(number) : ""));
+        case 0x1B: return std::string("EEC" + (number > 0 ? to_string(number) : ""));
+        case 0x1E: return std::string("Gateway" + (number > 0 ? to_string(number) : ""));
+        default: return std::string("Unknown (0x" + to_string(device_type) + ")");
       }
-      
-      return std::string(device_name + " - Unit #" + to_string(number));
 
-  # ============================================================================
-  # BOARD 3 ERROR CODE TEXT (Register 536 decoded)
-  # ============================================================================
+  # Board 3 device type decoded
   - platform: template
-    name: "Board 3 Error Code Text"
-    id: board3_error_code_text
+    name: "Board 3 Type"
     entity_category: diagnostic
     update_interval: 30s
-    lambda: |-
-      uint16_t error_code = (uint16_t)id(board3_error_code).state;
-      
-      if (error_code == 0xFFFF || error_code == 65535) {
-        return std::string("No Error on Board 3");
-      }
-      if (error_code == 0xFFFE || error_code == 65534) {
-        return std::string("Board 3 Device Not Available");
-      }
-      
-      return std::string("Error Code: 0x" + to_string(error_code) + 
-                        " - See manual for device-specific error meaning");
-
-  # ============================================================================
-  # BOARD 3 ERROR CATEGORY TEXT (Register 537 decoded)
-  # ============================================================================
-  - platform: template
-    name: "Board 3 Error Category Text"
-    id: board3_error_category_text
-    entity_category: diagnostic
-    update_interval: 30s
-    lambda: |-
-      uint16_t category = (uint16_t)id(board3_error_category).state;
-      switch(category) {
-        case 0: return std::string("Locking Error - Device locked, manual intervention needed");
-        case 3: return std::string("Blocking Error - Device blocked, operation prevented");
-        case 6: return std::string("Warning - Non-critical issue, system can continue");
-        default: return std::string("Unknown Error Category: " + to_string(category));
-      }
-
-  # ============================================================================
-  # BOARD 3 DEVICE TYPE TEXT (Register 131 decoded)
-  # ============================================================================
-  - platform: template
-    name: "Board 3 Device Type Text"
-    id: board3_device_type_text
-    entity_category: diagnostic
-    update_interval: 60s
     lambda: |-
       uint16_t device_type = (uint16_t)id(board3_device_type).state;
-      uint8_t category = device_type >> 8;
+      if (device_type == 0xFFFF || device_type == 0) {
+        return std::string("Not Available");
+      }
+      uint8_t category = (device_type >> 8) & 0xFF;
       uint8_t number = device_type & 0xFF;
       
-      std::string device_name;
       switch(category) {
-        case 0x00: device_name = "CU-GH"; break;
-        case 0x01: device_name = "CU-OH"; break;
-        case 0x02: device_name = "EHC"; break;
-        case 0x14: device_name = "MK"; break;
-        case 0x19: device_name = "SCB"; break;
-        case 0x1B: device_name = "EEC"; break;
-        case 0x1E: device_name = "Gateway (GTW-08)"; break;
-        default: device_name = "Unknown (0x" + to_string(category) + ")"; break;
+        case 0x00: return std::string("CU-GH" + (number > 0 ? to_string(number) : ""));
+        case 0x01: return std::string("CU-OH" + (number > 0 ? to_string(number) : ""));
+        case 0x02: return std::string("EHC" + (number > 0 ? to_string(number) : ""));
+        case 0x14: return std::string("MK" + (number > 0 ? to_string(number) : ""));
+        case 0x19: return std::string("SCB" + (number > 0 ? to_string(number) : ""));
+        case 0x1B: return std::string("EEC" + (number > 0 ? to_string(number) : ""));
+        case 0x1E: return std::string("Gateway" + (number > 0 ? to_string(number) : ""));
+        default: return std::string("Unknown (0x" + to_string(device_type) + ")");
       }
-      
-      return std::string(device_name + " - Unit #" + to_string(number));
+
+  # ============================================================================
+  # SEASONAL MODE TEXT (Register 385 decoded)
+  # ============================================================================
+  - platform: template
+    name: "Seasonal Mode"
+    id: seasonal_mode_text
+    entity_category: diagnostic
+    update_interval: 30s
+    lambda: |-
+      uint16_t mode_code = (uint16_t)id(seasonal_mode_code).state;
+      switch(mode_code) {
+        case 0: return std::string("Winter");
+        case 1: return std::string("Frost Protection");
+        case 2: return std::string("Summer Neutral Band");
+        case 3: return std::string("Summer");
+        default: return std::string("Unknown (" + to_string(mode_code) + ")");
+      }
 
   # System Status (Register 411)
   - platform: template
@@ -997,13 +890,22 @@ number:
     address: 675
     register_type: holding
     value_type: U_WORD
+    min_value: 15.0
+    max_value: 40.0
     step: 0.1
     unit_of_measurement: "°C"
     entity_category: config
     lambda: |-
-      return x * 0.1;
+      uint16_t raw = (uint16_t)x;
+      if (raw == 0xFFFF || raw == 0) {
+        return NAN;  // Invalid/unavailable
+      }
+      return raw * 0.1f;
     write_lambda: |-
-      return x * 10;
+      if (isnan(x) || x < 15.0f || x > 30.0f) {
+        return 0;  // Invalid input
+      }
+      return (uint16_t)(x * 10.0f);
 
 
   # Heating Curve Gradient (Register 674 - CP230)
@@ -1015,9 +917,18 @@ number:
     address: 674
     register_type: holding
     value_type: U_WORD
+    min_value: 0.0
+    max_value: 2.0
     step: 0.1
     entity_category: config
     lambda: |-
-      return x * 0.1;
+      uint16_t raw = (uint16_t)x;
+      if (raw == 0xFFFF || raw == 0) {
+        return NAN;  // Invalid/unavailable
+      }
+      return raw * 0.1f;
     write_lambda: |-
-      return x * 10;
+      if (isnan(x) || x < 0.3f || x > 2.0f) {
+        return 0;  // Invalid input
+      }
+      return (uint16_t)(x * 10.0f);
