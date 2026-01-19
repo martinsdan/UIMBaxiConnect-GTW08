@@ -112,6 +112,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Outdoor Temperature"
     id: outdoor_temp
+    icon: mdi:thermometer
     address: 384
     register_type: holding
     value_type: S_WORD
@@ -144,6 +145,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Flow Temperature"
     id: temp_flow
+    icon: mdi:thermometer-chevron-up
     address: 400
     register_type: holding
     value_type: S_WORD
@@ -159,6 +161,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Return Temperature"
     id: temp_return
+    icon: mdi:thermometer-chevron-down
     address: 401
     register_type: holding
     value_type: S_WORD
@@ -174,6 +177,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "HP Flow Temperature"
     id: hp_temp_flow
+    icon: mdi:heat-pump
     address: 403
     register_type: holding
     value_type: S_WORD
@@ -189,6 +193,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "HP Return Temperature"
     id: hp_temp_return
+    icon: mdi:heat-pump-outline
     address: 404
     register_type: holding
     value_type: S_WORD
@@ -204,6 +209,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Water Pressure"
     id: water_pressure
+    icon: mdi:gauge
     address: 409
     register_type: holding
     value_type: U_WORD
@@ -317,6 +323,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Power Output"
     id: power_output
+    icon: mdi:flash
     address: 413
     register_type: holding
     value_type: U_WORD
@@ -339,6 +346,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "COP - Instantaneous"
     id: cop_instantaneous
+    icon: mdi:chart-line
     address: 9230
     register_type: holding
     value_type: U_WORD
@@ -362,6 +370,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Current System Power"
     id: current_system_power
+    icon: mdi:flash-circle
     address: 272
     register_type: holding
     value_type: U_WORD      # UINT8 in low byte
@@ -420,6 +429,7 @@ sensor:
   # WiFi signal
   - platform: wifi_signal
     name: "WiFi Signal"
+    icon: mdi:wifi
     update_interval: 60s
 
   # Uptime
@@ -793,6 +803,7 @@ binary_sensor:
       number: GPIO41
       inverted: true
     name: "Button"
+    icon: mdi:gesture-tap-button
     on_press:
       then:
         - light.toggle: status_led
@@ -807,6 +818,7 @@ select:
     modbus_controller_id: gtw08_controller
     name: "Algorithm Type"
     id: algorithm_type_select
+    icon: mdi:cog
     address: 258
     value_type: U_WORD
     entity_category: config
@@ -821,6 +833,7 @@ select:
     modbus_controller_id: gtw08_controller
     name: "Heat Demand"
     id: heat_demand_select
+    icon: mdi:thermostat
     address: 259
     value_type: U_WORD
     entity_category: config
@@ -874,6 +887,7 @@ select:
     modbus_controller_id: gtw08_controller
     name: "Zone 1 Operating Mode"
     id: zone1_operating_mode_select
+    icon: mdi:calendar-clock
     address: 649
     value_type: U_WORD
     entity_category: config
@@ -896,8 +910,9 @@ number:
   # Display: 15.0-30.0°C, Lambda: divides by 10 for read, multiplies by 10 for write
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "Zone 1 Heating Curve Base"
+    name: "Heating Curve Base"
     id: zone1_curve_base
+    icon: mdi:chart-bell-curve
     address: 675
     register_type: holding
     value_type: U_WORD
@@ -924,8 +939,9 @@ number:
   # Display: 0.3-2.0, Lambda: divides by 10 for read, multiplies by 10 for write
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
-    name: "Zone 1 Heating Curve Gradient"
+    name: "Heating Curve Gradient"
     id: zone1_curve_gradient
+    icon: mdi:chart-bell-curve-cumulative
     address: 674
     register_type: holding
     value_type: U_WORD
@@ -956,6 +972,7 @@ number:
     modbus_controller_id: gtw08_controller
     name: "Target Power"
     id: target_power
+    icon: mdi:flash-outline
     address: 256
     register_type: holding
     value_type: U_WORD      # UINT8 in documentation but usually accessed as WORD
@@ -973,6 +990,7 @@ number:
     modbus_controller_id: gtw08_controller
     name: "Target Pump Speed"
     id: target_pump_speed
+    icon: mdi:pump
     address: 459
     register_type: holding
     value_type: U_WORD
@@ -992,6 +1010,7 @@ number:
     modbus_controller_id: gtw08_controller
     name: "Target Flow Temperature"
     id: target_flow_temp
+    icon: mdi:thermometer-water
     address: 648
     register_type: holding
     value_type: U_WORD
@@ -1011,6 +1030,7 @@ number:
     modbus_controller_id: gtw08_controller
     name: "Target Room Temperature"
     id: target_room_temp
+    icon: mdi:home-thermometer
     address: 664
     register_type: holding
     value_type: U_WORD
