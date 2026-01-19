@@ -285,7 +285,7 @@ sensor:
     entity_category: diagnostic
     filters:
       - lambda: |-
-          if (x == 65535) return {};
+          if (x >= 65535.0) return {};
           return x;
 
   # System status (Register 411 - AM012 - Main appliance status)
@@ -348,11 +348,11 @@ sensor:
     filters:
       - lambda: |-
           uint16_t raw = (uint16_t)x;
-          if (raw == 0xFFFF || raw == 65535 || raw == 0) {
+          if (raw == 0xFFFF || raw == 65535) {
             return {};  // Data not available
           }
           float cop_value = raw * 0.001f;
-          if (cop_value < 0.5f || cop_value > 10.0f) {
+          if (cop_value < 0.0f || cop_value > 10.0f) {
             return {};  // Out of reasonable range
           }
           return cop_value;
@@ -555,6 +555,8 @@ sensor:
             return {};  // Out of reasonable range for heat pump
           }
           return power;
+
+
 
 
 # ============================================================================
