@@ -290,7 +290,7 @@ sensor:
     address: 277
     register_type: holding
     value_type: U_WORD
-    icon: mdi:alert-circle
+    icon: mdi:alert-circle-outline
     entity_category: diagnostic
     filters:
       - lambda: |-
@@ -373,7 +373,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Current System Power"
     id: current_system_power
-    icon: mdi:flash-circle
+    icon: mdi:lightning-bolt
     address: 272
     register_type: holding
     value_type: U_WORD      # UINT8 in low byte
@@ -673,7 +673,7 @@ text_sensor:
   - platform: template
     name: "System Status"
     id: system_status_text
-    icon: mdi:information
+    icon: mdi:information-outline
     entity_category: diagnostic
     update_interval: 15s
     lambda: |-
@@ -712,7 +712,7 @@ text_sensor:
   - platform: template
     name: "Sub Status"
     id: sub_status_text
-    icon: mdi:cog
+    icon: mdi:cog-outline
     entity_category: diagnostic
     update_interval: 15s
     lambda: |-
