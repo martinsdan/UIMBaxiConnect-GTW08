@@ -60,6 +60,7 @@ logger:
 button:
   - platform: restart
     name: "Restart"
+    icon: mdi:restart
 
 # Integrated status LED on AtomS3
 light:
@@ -238,6 +239,7 @@ sensor:
     address: 128
     register_type: holding
     value_type: U_WORD
+    icon: mdi:format-list-numbered
     entity_category: diagnostic
     skip_updates: 10  # Update every 10th cycle (every 5 minutes with 30s interval)
     filters:
@@ -288,6 +290,7 @@ sensor:
     address: 277
     register_type: holding
     value_type: U_WORD
+    icon: mdi:alert-circle
     entity_category: diagnostic
     filters:
       - lambda: |-
@@ -392,6 +395,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Pump Speed"
     id: pump_speed
+    icon: mdi:pump
     address: 459
     register_type: holding
     value_type: U_WORD      # UINT16 0.1%
@@ -435,12 +439,14 @@ sensor:
   # Uptime
   - platform: uptime
     name: "Uptime"
+    icon: mdi:timer-outline
 
   # Calculated target temperature based on heating curve
   # Formula: Base + (20 - Outdoor Temp) * Gradient
   - platform: template
     name: "Heating Curve Target"
     id: heating_curve_target
+    icon: mdi:thermometer-check
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
@@ -464,6 +470,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Energy - Central Heating"
     id: energy_ch
+    icon: mdi:lightning-bolt
     address: 433
     register_type: holding
     value_type: U_DWORD  # 32-bit unsigned (kWh total)
@@ -482,6 +489,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Energy - Domestic Hot Water"
     id: energy_dhw
+    icon: mdi:faucet
     address: 435
     register_type: holding
     value_type: U_DWORD
@@ -499,6 +507,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Energy - Cooling"
     id: energy_cooling
+    icon: mdi:snowflake
     address: 437
     register_type: holding
     value_type: U_DWORD
@@ -516,6 +525,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Energy - Total"
     id: energy_total
+    icon: mdi:lightning-bolt-circle
     address: 439
     register_type: holding
     value_type: U_DWORD
@@ -533,6 +543,7 @@ sensor:
     modbus_controller_id: gtw08_controller
     name: "Power - Actual Output"
     id: power_actual
+    icon: mdi:flash
     address: 460
     register_type: holding
     value_type: U_DWORD # Changed from U_WORD to U_DWORD (32-bit) per documentation
@@ -561,6 +572,7 @@ text_sensor:
   - platform: wifi_info
     ip_address:
       name: "IP Address"
+      icon: mdi:ip-network
 
   # ============================================================================
   # BOARD DIAGNOSTIC TEXT SENSORS
@@ -569,6 +581,7 @@ text_sensor:
   # Board 1 device type decoded
   - platform: template
     name: "Board 1 Type"
+    icon: mdi:chip
     entity_category: diagnostic
     update_interval: 30s
     lambda: |-
@@ -590,6 +603,7 @@ text_sensor:
   # Board 2 device type decoded
   - platform: template
     name: "Board 2 Type"
+    icon: mdi:chip
     entity_category: diagnostic
     update_interval: 30s
     lambda: |-
@@ -614,6 +628,7 @@ text_sensor:
   # Board 3 device type decoded
   - platform: template
     name: "Board 3 Type"
+    icon: mdi:chip
     entity_category: diagnostic
     update_interval: 30s
     lambda: |-
@@ -641,6 +656,7 @@ text_sensor:
   - platform: template
     name: "Seasonal Mode"
     id: seasonal_mode_text
+    icon: mdi:calendar-range
     entity_category: diagnostic
     update_interval: 30s
     lambda: |-
@@ -657,6 +673,7 @@ text_sensor:
   - platform: template
     name: "System Status"
     id: system_status_text
+    icon: mdi:information
     entity_category: diagnostic
     update_interval: 15s
     lambda: |-
@@ -695,6 +712,7 @@ text_sensor:
   - platform: template
     name: "Sub Status"
     id: sub_status_text
+    icon: mdi:cog
     entity_category: diagnostic
     update_interval: 15s
     lambda: |-
