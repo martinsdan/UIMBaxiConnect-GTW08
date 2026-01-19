@@ -283,6 +283,10 @@ sensor:
     register_type: holding
     value_type: U_WORD
     entity_category: diagnostic
+    filters:
+      - lambda: |-
+          if (x >= 65535.0) return {};
+          return x;
 
   # System status (Register 411 - AM012 - Main appliance status)
   - platform: modbus_controller
@@ -293,6 +297,8 @@ sensor:
     register_type: holding
     value_type: U_WORD
     internal: true # Hide from Home Assistant
+    filters:
+      - lambda: return (uint16_t)x & 0x00FF; # Extract ENUM8 from low byte
 
   # Sub status (Register 412 - AM014 - Sub status)
   - platform: modbus_controller
@@ -303,6 +309,8 @@ sensor:
     register_type: holding
     value_type: U_WORD
     internal: true # Hide from Home Assistant - use template version for readable text
+    filters:
+      - lambda: return (uint16_t)x & 0x00FF; # Extract ENUM8 from low byte
 
   # System power output (Register 413 - AM024) - FIXED SENTINEL HANDLING
   - platform: modbus_controller
@@ -340,28 +348,14 @@ sensor:
     filters:
       - lambda: |-
           uint16_t raw = (uint16_t)x;
-          if (raw == 0xFFFF || raw == 65535 || raw == 0) {
+          if (raw == 0xFFFF || raw == 65535) {
             return {};  // Data not available
           }
           float cop_value = raw * 0.001f;
-          if (cop_value < 0.5f || cop_value > 10.0f) {
+          if (cop_value < 0.0f || cop_value > 10.0f) {
             return {};  // Out of reasonable range
           }
           return cop_value;
-
-  # COP threshold for heat pump/boiler switch (Register 9231 - HM032)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "COP Threshold"
-    id: cop_threshold
-    address: 9231
-    register_type: holding
-    value_type: U_WORD      # UINT16 0.001
-    unit_of_measurement: ""
-    state_class: measurement
-    accuracy_decimals: 3
-    filters:
-      - multiply: 0.001
 
   # Current system power from consumer manager (Register 272)
   - platform: modbus_controller
@@ -380,7 +374,7 @@ sensor:
           uint8_t power_raw = raw & 0x00FF;   // take UINT8 from low byte
           if (power_raw > 100) {
             ESP_LOGD("baxi_system_power", "System Power out of range: raw=%u", power_raw);
-            return {};  // Return empty optional instead of NAN
+             return {};  // Return empty optional instead of NAN
           }
           return (float)power_raw;
 
@@ -467,6 +461,11 @@ sensor:
     device_class: energy
     state_class: total_increasing
     accuracy_decimals: 0
+    filters:
+      # Filter invalid zero reading on startup or error
+      - lambda: |-
+          if (x > 4000000000.0) return {}; 
+          return x;
 
   # Domestic hot water energy (Register 435 - AC006)
   - platform: modbus_controller
@@ -480,6 +479,10 @@ sensor:
     device_class: energy
     state_class: total_increasing
     accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          if (x > 4000000000.0) return {}; 
+          return x;
 
   # Cooling energy (Register 437 - AC007)
   - platform: modbus_controller
@@ -493,6 +496,10 @@ sensor:
     device_class: energy
     state_class: total_increasing
     accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          if (x > 4000000000.0) return {}; 
+          return x;
 
   # Total energy consumed (Register 439)
   - platform: modbus_controller
@@ -506,6 +513,10 @@ sensor:
     device_class: energy
     state_class: total_increasing
     accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          if (x > 4000000000.0) return {}; 
+          return x;
 
   # Actual power output (Register 460 - AM047, 0.01 kW resolution) - FIXED SENTINEL HANDLING
   - platform: modbus_controller
@@ -514,15 +525,15 @@ sensor:
     id: power_actual
     address: 460
     register_type: holding
-    value_type: U_WORD
+    value_type: U_DWORD # Changed from U_WORD to U_DWORD (32-bit) per documentation
     unit_of_measurement: "kW"
     device_class: power
     state_class: measurement
     accuracy_decimals: 2
     filters:
       - lambda: |-
-          uint16_t raw = (uint16_t)x;
-          if (raw == 0xFFFF || raw == 65535 || raw == 0) {
+          uint32_t raw = (uint32_t)x;
+          if (raw == 0xFFFFFFFF) {
             return {};  // Data not available
           }
           float power = raw * 0.01f;
