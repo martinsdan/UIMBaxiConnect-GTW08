@@ -962,6 +962,7 @@ number:
     step: 1
     unit_of_measurement: "%"
     entity_category: config
+    mode: box
     write_lambda: |-
       return x;
 
@@ -978,6 +979,7 @@ number:
     step: 0.1
     unit_of_measurement: "%"
     entity_category: config
+    mode: box
     write_lambda: |-
       return x * 10.0;
     lambda: |-
@@ -996,6 +998,7 @@ number:
     step: 0.5
     unit_of_measurement: "°C"
     entity_category: config
+    mode: box
     write_lambda: |-
       return x * 100.0;
     lambda: |-
@@ -1014,6 +1017,7 @@ number:
     step: 0.1
     unit_of_measurement: "°C"
     entity_category: config
+    mode: box
     write_lambda: |-
       return x * 10.0;
     lambda: |-
