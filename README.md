@@ -206,8 +206,8 @@ modbus_controller:
 
 ### Number Controls (Read-Write)
 
-- **Zone 1 Heating Curve Base** - Target flow at 20°C outdoor
-- **Zone 1 Heating Curve Gradient** - Increase per °C outdoor drop
+- **Heating Curve Base** - Target flow at 20°C outdoor
+- **Heating Curve Gradient** - Increase per °C outdoor drop
 - **Target Power** - (0 - 100%) System Power Request (Register 256)
 - **Target Pump Speed** - (0 - 100%) Pump Speed Control (Register 459)
 - **Target Flow Temperature** - (20 - 80°C) Fixed Flow Setpoint (Register 648)
