@@ -283,6 +283,10 @@ sensor:
     register_type: holding
     value_type: U_WORD
     entity_category: diagnostic
+    filters:
+      - lambda: |-
+          if (x == 65535) return {};
+          return x;
 
   # System status (Register 411 - AM012 - Main appliance status)
   - platform: modbus_controller
@@ -474,7 +478,7 @@ sensor:
     filters:
       # Filter invalid zero reading on startup or error
       - lambda: |-
-          if (x <= 0.1 || x > 4000000000.0) return {}; 
+          if (x > 4000000000.0) return {}; 
           return x;
 
   # Domestic hot water energy (Register 435 - AC006)
@@ -491,7 +495,7 @@ sensor:
     accuracy_decimals: 0
     filters:
       - lambda: |-
-          if (x <= 0.1 || x > 4000000000.0) return {}; 
+          if (x > 4000000000.0) return {}; 
           return x;
 
   # Cooling energy (Register 437 - AC007)
@@ -508,7 +512,7 @@ sensor:
     accuracy_decimals: 0
     filters:
       - lambda: |-
-          if (x <= 0.1 || x > 4000000000.0) return {}; 
+          if (x > 4000000000.0) return {}; 
           return x;
 
   # Total energy consumed (Register 439)
@@ -525,7 +529,7 @@ sensor:
     accuracy_decimals: 0
     filters:
       - lambda: |-
-          if (x <= 0.1 || x > 4000000000.0) return {}; 
+          if (x > 4000000000.0) return {}; 
           return x;
 
   # Actual power output (Register 460 - AM047, 0.01 kW resolution) - FIXED SENTINEL HANDLING
@@ -543,7 +547,7 @@ sensor:
     filters:
       - lambda: |-
           uint32_t raw = (uint32_t)x;
-          if (raw == 0xFFFFFFFF || raw == 0) {
+          if (raw == 0xFFFFFFFF) {
             return {};  // Data not available
           }
           float power = raw * 0.01f;
