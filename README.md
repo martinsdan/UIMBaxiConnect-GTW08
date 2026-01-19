@@ -232,13 +232,13 @@ modbus_controller:
 - Energy - Domestic Hot Water (kWh)
 - Energy - Cooling (kWh)
 - Energy - Total (kWh)
-- COP Threshold - Heat pump/boiler switch threshold
+- COP - Instantaneous - *May show "unavailable" depending on model*
+- Seasonal Mode (Winter/Summer/Frost Protection)
+- System Error Status
 
 **System Diagnostics:**
 - System Status (friendly name from code)
 - Sub Status (detailed operation state)
-- Seasonal Mode (Winter/Summer/Frost Protection)
-- System Error Status
 - Number of Control Boards (shows connected boards)
 - Board 1/2/3 Device Types (identifies board types)
 - Error Flags (system-wide error detection)
@@ -261,11 +261,10 @@ Some sensors may show **"unavailable"** depending on your specific heat pump mod
 
 ### May Show "Unavailable":
 - ❓ **Water Pressure** - Availability depends on system configuration
-- ❓ **Power Output** - Availability depends on heat pump model/configuration
-- ❓ **COP - Instantaneous** - May not be supported on all models
-- ❓ **Power - Actual Output** - May not be supported on all models
+- ❓ **Power Output & Actual Power** - Many monobloc models (e.g., Platinum BC Plus) do not report power data to the gateway.
+- ❓ **COP - Instantaneous** - Most models return a sentinel value indicating this is not supported.
 
-**Note:** The GTW-08 gateway returns sentinel values (0xFFFF) for registers that are not available or supported on your specific system. The integration properly handles these and shows "unavailable" instead of incorrect values.
+**Note:** The GTW-08 gateway returns sentinel values (0xFFFF / 0xFFFFFFFF) for registers that are not available or supported on your specific system. The integration properly handles these and shows "unavailable" instead of incorrect or "raw" sentinel values.
 
 ## Board Diagnostics
 
@@ -445,10 +444,9 @@ Verify GTW-08 compatibility with your system's documentation.
 
 ## Roadmap
 
-- [ ] Energy counters (kWh consumption)
+- [x] Energy counters (kWh consumption)
 - [ ] Advanced diagnostics dashboard
 - [ ] Multi-zone support
-- [ ] Cascade system optimization
 - [ ] InfluxDB integration
 - [ ] Home Assistant energy dashboard examples
 

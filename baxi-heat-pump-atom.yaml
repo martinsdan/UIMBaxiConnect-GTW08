@@ -357,20 +357,6 @@ sensor:
           }
           return cop_value;
 
-  # COP threshold for heat pump/boiler switch (Register 9231 - HM032)
-  - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
-    name: "COP Threshold"
-    id: cop_threshold
-    address: 9231
-    register_type: holding
-    value_type: U_WORD      # UINT16 0.001
-    unit_of_measurement: ""
-    state_class: measurement
-    accuracy_decimals: 3
-    filters:
-      - multiply: 0.001
-
   # Current system power from consumer manager (Register 272)
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
@@ -555,8 +541,6 @@ sensor:
             return {};  // Out of reasonable range for heat pump
           }
           return power;
-
-
 
 
 # ============================================================================
