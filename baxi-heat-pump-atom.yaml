@@ -358,15 +358,9 @@ sensor:
     accuracy_decimals: 3
     filters:
       - lambda: |-
-          uint16_t raw = (uint16_t)x;
-          if (raw == 0xFFFF || raw == 65535) {
-            return {};  // Data not available
-          }
-          float cop_value = raw * 0.001f;
-          if (cop_value < 0.0f || cop_value > 10.0f) {
-            return {};  // Out of reasonable range
-          }
-          return cop_value;
+          uint16_t raw = uint16_t(x);
+          ESP_LOGI("baxi_cop", "COP raw: %u (0x%04X), calculated: %.3f", raw, raw, raw * 0.001f);
+          return raw * 0.001f;
 
   # Current system power from consumer manager (Register 272)
   - platform: modbus_controller
@@ -553,15 +547,9 @@ sensor:
     accuracy_decimals: 2
     filters:
       - lambda: |-
-          uint32_t raw = (uint32_t)x;
-          if (raw == 0xFFFFFFFF) {
-            return {};  // Data not available
-          }
-          float power = raw * 0.01f;
-          if (power < 0.0f || power > 50.0f) {
-            return {};  // Out of reasonable range for heat pump
-          }
-          return power;
+          uint32_t raw = uint32_t(x);
+          ESP_LOGI("baxi_power", "Power raw: %u (0x%08X), calc: %.2f kW", raw, raw, raw * 0.01f);
+          return raw * 0.01f;
 
 
 # ============================================================================
