@@ -102,6 +102,12 @@ modbus_controller:
     update_interval: 30s      # Increased from 15s
     offline_skip_updates: 5 # Skip updates if no response
 
+serial_proxy:
+  - id: rs485_serial
+    uart_id: modbus_uart
+    name: ${friendly_name} Bus
+    port_type: RS485
+
 # ============================================================================
 # SENSORS - Read-only values from heat pump via Modbus
 # ============================================================================
@@ -321,7 +327,7 @@ sensor:
     filters:
       - lambda: return (uint16_t)x & 0x00FF; # Extract ENUM8 from low byte
 
-  # System power output (Register 413 - AM024) - FIXED SENTINEL HANDLING
+  # System power output (Register 413 - AM024) - UINT16, 0.0001 resolution, 0-100%
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "Power Output"
@@ -332,19 +338,22 @@ sensor:
     value_type: U_WORD
     unit_of_measurement: "%"
     state_class: measurement
-    accuracy_decimals: 0
+    accuracy_decimals: 1
     filters:
       - lambda: |-
           uint16_t raw = (uint16_t)x;
-          if (raw == 0xFFFF || raw == 65535) {
+          if (raw == 0xFFFF || raw == 0) {
             return {};  // Data not available
           }
-          if (raw > 100) {
+          // 0.0001 resolution: raw 10000 = 1.0 = 100%
+          float pct = raw * 0.01f;
+          if (pct > 100.0f || pct < 0.0f) {
             return {};  // Out of valid percentage range
           }
-          return (float)raw;
+          return pct;
 
   # Calculated instantaneous COP (Register 9230 - HM031) - FIXED SENTINEL HANDLING
+  # force_new_range: hybrid section (9200+) is a separate address range
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "COP - Instantaneous"
@@ -353,6 +362,7 @@ sensor:
     address: 9230
     register_type: holding
     value_type: U_WORD
+    force_new_range: true
     unit_of_measurement: ""
     state_class: measurement
     accuracy_decimals: 3
@@ -550,6 +560,289 @@ sensor:
           uint32_t raw = uint32_t(x);
           ESP_LOGI("baxi_power", "Power raw: %u (0x%08X), calc: %.2f kW", raw, raw, raw * 0.01f);
           return raw * 0.01f;
+
+  # ============================================================================
+  # ADDITIONAL SENSORS - Useful monitoring registers not yet mapped
+  # ============================================================================
+
+  # DHW Internal Setpoint (Register 405 - AM101) - 0.01°C
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "DHW Internal Setpoint"
+    id: dhw_internal_setpoint
+    icon: mdi:water-thermometer
+    address: 405
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # CH Setpoint of Appliance (Register 406 - PM002) - 0.01°C
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "CH Setpoint"
+    id: ch_setpoint
+    icon: mdi:thermometer-chevron-up
+    address: 406
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # Cooling Flow Temp Setpoint (Register 407 - HM033) - 0.01°C
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Cooling Flow Setpoint"
+    id: cooling_flow_setpoint
+    icon: mdi:snowflake-thermometer
+    address: 407
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # DHW Flow Temp Setpoint (Register 408 - DM004) - 0.01°C
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "DHW Flow Setpoint"
+    id: dhw_flow_setpoint
+    icon: mdi:faucet-variant
+    address: 408
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # Flow Rate (Register 410 - AM056) - 0.01 l/min
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Flow Rate"
+    id: flow_rate
+    icon: mdi:water
+    address: 410
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "l/min"
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # COP Threshold (Register 463 - HM032) - 0.001 resolution
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "COP - Threshold"
+    id: cop_threshold
+    icon: mdi:chart-line-variant
+    address: 463
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: ""
+    state_class: measurement
+    accuracy_decimals: 3
+    filters:
+      - lambda: return uint16_t(x) * 0.001f;
+
+  # Heat Pump Defrost (Register 481 - HM009) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "HP Defrost Code"
+    id: hp_defrost_code
+    address: 481
+    register_type: holding
+    value_type: U_WORD
+    internal: true
+    filters:
+      - lambda: return (uint16_t)x & 0x00FF;
+
+  # Low Noise Mode State (Register 480 - AM002) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Low Noise Mode Code"
+    id: low_noise_mode_code
+    address: 480
+    register_type: holding
+    value_type: U_WORD
+    internal: true
+    entity_category: diagnostic
+    filters:
+      - lambda: return (uint16_t)x & 0x00FF;
+
+  # System Flow Temp Setpoint incl. backups (Register 458 - HM003) - 0.01°C
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "System Flow Setpoint"
+    id: system_flow_setpoint
+    icon: mdi:thermometer-chevron-up
+    address: 458
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # ODU Current Draw (Register 456 - HM062) - 0.1A
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "ODU Current"
+    id: odu_current
+    icon: mdi:flash
+    address: 456
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "A"
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+
+  # Condenser Pump Speed (Register 453 - HM069) - 0.001 resolution
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Condenser Pump Speed"
+    id: condenser_pump_speed
+    icon: mdi:pump
+    address: 453
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF) return {};
+          return raw * 0.1f;
+
+  # Zone 1 Flow/Return Temperature (Register 1100 - CM040) - 0.01°C
+  # force_new_range: these zone monitoring regs (1100+) are in a different section
+  # from the zone config regs (640+), GTW-08 rejects bulk reads spanning both
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Zone 1 Flow Temperature"
+    id: zone1_flow_temp
+    icon: mdi:thermometer-chevron-up
+    address: 1100
+    register_type: holding
+    value_type: S_WORD
+    force_new_range: true
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # Zone 1 Current Flow Temp Setpoint (Register 1101 - CM070) - 0.01°C
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Zone 1 Current Setpoint"
+    id: zone1_current_setpoint
+    icon: mdi:thermometer-check
+    address: 1101
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # Zone 1 Room Temperature (Register 1104 - CM030) - 0.1°C
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Zone 1 Room Temperature"
+    id: zone1_room_temp
+    icon: mdi:home-thermometer
+    address: 1104
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+
+  # Zone 1 Heat Demand Active (Register 1106 - CM150) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Zone 1 Heat Demand Code"
+    id: zone1_heat_demand_code
+    address: 1106
+    register_type: holding
+    value_type: U_WORD
+    internal: true
+    filters:
+      - lambda: return (uint16_t)x & 0x00FF;
+
+  # Zone 1 Active Activity (Register 1107 - CM130) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Zone 1 Activity Code"
+    id: zone1_activity_code
+    address: 1107
+    register_type: holding
+    value_type: U_WORD
+    internal: true
+    filters:
+      - lambda: return (uint16_t)x & 0x00FF;
+
+  # Zone 1 Running Mode (Register 1108 - CM120) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Zone 1 Running Mode Code"
+    id: zone1_running_mode_code
+    address: 1108
+    register_type: holding
+    value_type: U_WORD
+    internal: true
+    filters:
+      - lambda: return (uint16_t)x & 0x00FF;
+
+  # Zone 1 Functioning Mode (Register 1109 - CM200) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Zone 1 Functioning Mode Code"
+    id: zone1_func_mode_code
+    address: 1109
+    register_type: holding
+    value_type: U_WORD
+    internal: true
+    filters:
+      - lambda: return (uint16_t)x & 0x00FF;
+
+  # Zone 1 Pump Running (Register 1110 - CM050) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Zone 1 Pump Code"
+    id: zone1_pump_code
+    address: 1110
+    register_type: holding
+    value_type: U_WORD
+    internal: true
+    filters:
+      - lambda: return (uint16_t)x & 0x00FF;
 
 
 # ============================================================================
@@ -798,11 +1091,151 @@ text_sensor:
         default: return std::string("Unknown (" + to_string(sub_code) + ")");
       }
 
+  # HP Defrost (Register 481 decoded)
+  - platform: template
+    name: "HP Defrost"
+    id: hp_defrost_text
+    icon: mdi:snowflake-alert
+    entity_category: diagnostic
+    update_interval: 30s
+    lambda: |-
+      uint16_t code = (uint16_t)id(hp_defrost_code).state;
+      switch(code) {
+        case 0: return std::string("No");
+        case 1: return std::string("Yes");
+        default: return std::string("Unknown (" + to_string(code) + ")");
+      }
+
+  # Low Noise Mode (Register 480 decoded)
+  - platform: template
+    name: "Low Noise Mode"
+    id: low_noise_mode_text
+    icon: mdi:volume-off
+    entity_category: diagnostic
+    update_interval: 30s
+    lambda: |-
+      uint16_t code = (uint16_t)id(low_noise_mode_code).state;
+      switch(code) {
+        case 0: return std::string("Off");
+        case 1: return std::string("Level 1");
+        case 2: return std::string("Level 2");
+        case 3: return std::string("Level 3");
+        case 4: return std::string("Level 4");
+        case 5: return std::string("Level 5");
+        default: return std::string("Unknown (" + to_string(code) + ")");
+      }
+
+  # Zone 1 Activity (Register 1107 decoded)
+  - platform: template
+    name: "Zone 1 Activity"
+    id: zone1_activity_text
+    icon: mdi:calendar-check
+    entity_category: diagnostic
+    update_interval: 30s
+    lambda: |-
+      uint16_t code = (uint16_t)id(zone1_activity_code).state;
+      switch(code) {
+        case 0: return std::string("Antifrost");
+        case 1: return std::string("Reduced");
+        case 2: return std::string("Comfort");
+        case 3: return std::string("Legionella");
+        default: return std::string("Unknown (" + to_string(code) + ")");
+      }
+
+  # Zone 1 Running Mode (Register 1108 decoded)
+  - platform: template
+    name: "Zone 1 Running Mode"
+    id: zone1_running_mode_text
+    icon: mdi:cog-outline
+    entity_category: diagnostic
+    update_interval: 30s
+    lambda: |-
+      uint16_t code = (uint16_t)id(zone1_running_mode_code).state;
+      switch(code) {
+        case 0: return std::string("Scheduling");
+        case 1: return std::string("Manual");
+        case 2: return std::string("Antifrost");
+        case 3: return std::string("Temporary");
+        case 4: return std::string("Holiday");
+        default: return std::string("Unknown (" + to_string(code) + ")");
+      }
+
+  # Zone 1 Functioning Mode (Register 1109 decoded)
+  - platform: template
+    name: "Zone 1 Functioning Mode"
+    id: zone1_func_mode_text
+    icon: mdi:information-outline
+    entity_category: diagnostic
+    update_interval: 30s
+    lambda: |-
+      uint16_t code = (uint16_t)id(zone1_func_mode_code).state;
+      switch(code) {
+        case 0: return std::string("Standby");
+        case 1: return std::string("Heating");
+        case 2: return std::string("Cooling");
+        default: return std::string("Unknown (" + to_string(code) + ")");
+      }
+
+  # Zone 1 Heat Demand (Register 1106 decoded)
+  - platform: template
+    name: "Zone 1 Heat Demand"
+    id: zone1_heat_demand_text
+    icon: mdi:fire
+    entity_category: diagnostic
+    update_interval: 30s
+    lambda: |-
+      uint16_t code = (uint16_t)id(zone1_heat_demand_code).state;
+      switch(code) {
+        case 0: return std::string("OFF");
+        case 1: return std::string("ON");
+        default: return std::string("Unknown (" + to_string(code) + ")");
+      }
+
+  # Zone 1 Pump Status (Register 1110 decoded)
+  - platform: template
+    name: "Zone 1 Pump"
+    id: zone1_pump_text
+    icon: mdi:pump
+    entity_category: diagnostic
+    update_interval: 30s
+    lambda: |-
+      uint16_t code = (uint16_t)id(zone1_pump_code).state;
+      switch(code) {
+        case 0: return std::string("Off");
+        case 1: return std::string("Running");
+        default: return std::string("Unknown (" + to_string(code) + ")");
+      }
+
 # ============================================================================
 # BINARY SENSORS - Button input
 # ============================================================================
 
 binary_sensor:
+  # Heat Pump Defrost (from Register 481)
+  - platform: template
+    name: "HP Defrost Active"
+    id: hp_defrost_active
+    icon: mdi:snowflake-alert
+    entity_category: diagnostic
+    lambda: |-
+      return (uint16_t)id(hp_defrost_code).state == 1;
+
+  # Zone 1 Heat Demand (from Register 1106)
+  - platform: template
+    name: "Zone 1 Heating"
+    id: zone1_heating
+    icon: mdi:fire
+    lambda: |-
+      return (uint16_t)id(zone1_heat_demand_code).state == 1;
+
+  # Zone 1 Pump Running (from Register 1110)
+  - platform: template
+    name: "Zone 1 Pump Running"
+    id: zone1_pump_running
+    icon: mdi:pump
+    lambda: |-
+      return (uint16_t)id(zone1_pump_code).state == 1;
+
   # Integrated button
   - platform: gpio
     pin:
@@ -827,6 +1260,7 @@ select:
     icon: mdi:cog
     address: 258
     value_type: U_WORD
+    use_write_multiple: true
     entity_category: config
     optionsmap:
       "Both Temp & Power": 0
@@ -842,6 +1276,7 @@ select:
     icon: mdi:thermostat
     address: 259
     value_type: U_WORD
+    use_write_multiple: true
     entity_category: config
     optionsmap:
       "Standby": 0
@@ -896,11 +1331,147 @@ select:
     icon: mdi:calendar-clock
     address: 649
     value_type: U_WORD
+    use_write_multiple: true
     entity_category: config
     optionsmap:
       "Scheduling (uses heating curve)": 0
       "Manual (fixed setpoint)": 1
       "Off": 2
+
+  # Force Summer Mode (Register 389 - AP089) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Force Summer Mode"
+    id: force_summer_mode
+    icon: mdi:weather-sunny
+    address: 389
+    value_type: U_WORD
+    use_write_multiple: true
+    entity_category: config
+    optionsmap:
+      "Off": 0
+      "On": 1
+
+  # DHW Eco/Comfort Mode (Register 479 - DP051) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "DHW Mode"
+    id: dhw_mode
+    icon: mdi:faucet
+    address: 479
+    value_type: U_WORD
+    use_write_multiple: true
+    entity_category: config
+    optionsmap:
+      "Eco (HP only)": 0
+      "Comfort (HP + Boiler)": 1
+
+  # Silent Mode (Register 490 - HP058) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Silent Mode"
+    id: silent_mode
+    icon: mdi:volume-off
+    address: 490
+    value_type: U_WORD
+    use_write_multiple: true
+    entity_category: config
+    optionsmap:
+      "Off": 0
+      "Level 1": 1
+      "Level 2": 2
+      "Level 3": 3
+      "Level 4": 4
+      "Level 5": 5
+
+  # Backup Type (Register 482 - HP029) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Backup Type"
+    id: backup_type
+    icon: mdi:flash-triangle
+    address: 482
+    value_type: U_WORD
+    use_write_multiple: true
+    entity_category: config
+    optionsmap:
+      "No Backup": 0
+      "1-Stage Electric": 1
+      "2-Stage Electric": 2
+      "Boiler Backup": 3
+
+  # Cooling Type (Register 502 - AP028) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Cooling Type"
+    id: cooling_type
+    icon: mdi:snowflake
+    address: 502
+    value_type: U_WORD
+    use_write_multiple: true
+    entity_category: config
+    optionsmap:
+      "Off": 0
+      "Active Cooling": 1
+      "Free Cooling": 2
+
+  # Force Cooling Mode (Register 503 - AP015) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Force Cooling"
+    id: force_cooling
+    icon: mdi:snowflake-variant
+    address: 503
+    value_type: U_WORD
+    use_write_multiple: true
+    entity_category: config
+    optionsmap:
+      "No": 0
+      "Yes": 1
+
+  # CH Heat Demand Processing (Register 500 - AP016) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "CH Heat Demand"
+    id: ch_heat_demand
+    icon: mdi:radiator
+    address: 500
+    value_type: U_WORD
+    use_write_multiple: true
+    entity_category: config
+    optionsmap:
+      "Off": 0
+      "On": 1
+
+  # DHW Heat Demand Processing (Register 501 - AP017) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "DHW Heat Demand"
+    id: dhw_heat_demand
+    icon: mdi:water-boiler
+    address: 501
+    value_type: U_WORD
+    use_write_multiple: true
+    entity_category: config
+    optionsmap:
+      "Off": 0
+      "On": 1
+
+  # Hybrid Mode (Register 464 - HP061) - ENUM8
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Hybrid Mode"
+    id: hybrid_mode
+    icon: mdi:swap-horizontal
+    address: 464
+    value_type: U_WORD
+    use_write_multiple: true
+    entity_category: config
+    optionsmap:
+      "No Hybrid": 0
+      "Hybrid Cost": 1
+      "Hybrid Primary Energy": 2
+      "Hybrid CO2": 3
 
 # ============================================================================
 # NUMBER CONTROLS - Read-write numeric values
@@ -922,6 +1493,7 @@ number:
     address: 675
     register_type: holding
     value_type: U_WORD
+    use_write_multiple: true
     min_value: 15.0
     max_value: 40.0
     step: 0.1
@@ -951,6 +1523,7 @@ number:
     address: 674
     register_type: holding
     value_type: U_WORD
+    use_write_multiple: true
     min_value: 0.0
     max_value: 2.0
     step: 0.1
@@ -982,6 +1555,7 @@ number:
     address: 256
     register_type: holding
     value_type: U_WORD      # UINT8 in documentation but usually accessed as WORD
+    use_write_multiple: true
     min_value: 0
     max_value: 100
     step: 1
@@ -1000,6 +1574,7 @@ number:
     address: 459
     register_type: holding
     value_type: U_WORD
+    use_write_multiple: true
     min_value: 0
     max_value: 100
     step: 0.1
@@ -1020,6 +1595,7 @@ number:
     address: 648
     register_type: holding
     value_type: U_WORD
+    use_write_multiple: true
     min_value: 20.0
     max_value: 80.0
     step: 0.5
@@ -1040,6 +1616,7 @@ number:
     address: 664
     register_type: holding
     value_type: U_WORD
+    use_write_multiple: true
     min_value: 10.0
     max_value: 30.0
     step: 0.1
@@ -1050,3 +1627,130 @@ number:
       return x * 10.0;
     lambda: |-
       return x * 0.1;
+
+  # Heating Temperature Setpoint (Register 257) - Remote heating temp, 0.01°C
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Heating Temperature Setpoint"
+    id: heating_temp_setpoint
+    icon: mdi:thermometer-plus
+    address: 257
+    register_type: holding
+    value_type: U_WORD
+    use_write_multiple: true
+    min_value: 20.0
+    max_value: 80.0
+    step: 0.5
+    unit_of_measurement: "°C"
+    entity_category: config
+    mode: box
+    write_lambda: |-
+      return x * 100.0;
+    lambda: |-
+      return x * 0.01;
+
+  # Cooling Temperature Setpoint (Register 260) - Remote cooling temp, 0.01°C (v1.02+)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Cooling Temperature Setpoint"
+    id: cooling_temp_setpoint
+    icon: mdi:thermometer-minus
+    address: 260
+    register_type: holding
+    value_type: S_WORD
+    use_write_multiple: true
+    min_value: 5.0
+    max_value: 30.0
+    step: 0.5
+    unit_of_measurement: "°C"
+    entity_category: config
+    mode: box
+    write_lambda: |-
+      return x * 100.0;
+    lambda: |-
+      return x * 0.01;
+
+  # Outdoor Temp Upper Limit for Heating (Register 386 - AP073) - 0.01°C
+  # Heating stops above this outdoor temp (30.5 = disabled)
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Outdoor Temp Heating Limit"
+    id: outdoor_temp_heating_limit
+    icon: mdi:thermometer-alert
+    address: 386
+    register_type: holding
+    value_type: U_WORD
+    use_write_multiple: true
+    min_value: -20.0
+    max_value: 30.5
+    step: 0.5
+    unit_of_measurement: "°C"
+    entity_category: config
+    mode: box
+    write_lambda: |-
+      return x * 100.0;
+    lambda: |-
+      return x * 0.01;
+
+  # Antifreeze Outdoor Temperature (Register 388 - AP080) - 0.01°C
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "Antifreeze Outdoor Temp"
+    id: antifreeze_outdoor_temp
+    icon: mdi:snowflake-alert
+    address: 388
+    register_type: holding
+    value_type: S_WORD
+    use_write_multiple: true
+    min_value: -20.0
+    max_value: 10.0
+    step: 0.5
+    unit_of_measurement: "°C"
+    entity_category: config
+    mode: box
+    write_lambda: |-
+      return x * 100.0;
+    lambda: |-
+      return x * 0.01;
+
+  # DHW Comfort Setpoint (Register 665 - CP350) - 0.01°C
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "DHW Comfort Setpoint"
+    id: dhw_comfort_setpoint
+    icon: mdi:water-thermometer
+    address: 665
+    register_type: holding
+    value_type: U_WORD
+    use_write_multiple: true
+    min_value: 40.0
+    max_value: 60.0
+    step: 0.5
+    unit_of_measurement: "°C"
+    entity_category: config
+    mode: box
+    write_lambda: |-
+      return x * 100.0;
+    lambda: |-
+      return x * 0.01;
+
+  # DHW Reduced Setpoint (Register 666 - CP360) - 0.01°C
+  - platform: modbus_controller
+    modbus_controller_id: gtw08_controller
+    name: "DHW Reduced Setpoint"
+    id: dhw_reduced_setpoint
+    icon: mdi:water-thermometer-outline
+    address: 666
+    register_type: holding
+    value_type: U_WORD
+    use_write_multiple: true
+    min_value: 40.0
+    max_value: 60.0
+    step: 0.5
+    unit_of_measurement: "°C"
+    entity_category: config
+    mode: box
+    write_lambda: |-
+      return x * 100.0;
+    lambda: |-
+      return x * 0.01;
