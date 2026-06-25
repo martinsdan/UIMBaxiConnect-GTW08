@@ -1304,6 +1304,7 @@ select:
       "Power Only": 1
       "Temperature Only": 2
       "Monitoring Only": 3
+      "Unavailable": 255
 
   # Heat Demand control (Register 259) - Valid options per Tab.20: 0=Standby, 7=Heating, 8=Cooling
   - platform: modbus_controller
@@ -1319,6 +1320,7 @@ select:
       "Standby": 0
       "Heating": 7
       "Cooling": 8
+      "Unavailable": 255
     on_value:
       then:
         - if:
@@ -1374,6 +1376,7 @@ select:
       "Scheduling (uses heating curve)": 0
       "Manual (fixed setpoint)": 1
       "Off": 2
+      "Unavailable": 255
 
   # Force Summer Mode (Register 389 - AP089) - ENUM8
   - platform: modbus_controller
@@ -1388,6 +1391,7 @@ select:
     optionsmap:
       "Off": 0
       "On": 1
+      "Unavailable": 255
 
   # DHW Eco/Comfort Mode (Register 479 - DP051) - ENUM8
   - platform: modbus_controller
@@ -1402,6 +1406,7 @@ select:
     optionsmap:
       "Eco (HP only)": 0
       "Comfort (HP + Boiler)": 1
+      "Unavailable": 255
 
   # Silent Mode (Register 490 - HP058) - ENUM8
   - platform: modbus_controller
@@ -1420,6 +1425,7 @@ select:
       "Level 3": 3
       "Level 4": 4
       "Level 5": 5
+      "Unavailable": 255
 
   # Backup Type (Register 482 - HP029) - ENUM8
   - platform: modbus_controller
@@ -1436,6 +1442,7 @@ select:
       "1-Stage Electric": 1
       "2-Stage Electric": 2
       "Boiler Backup": 3
+      "Unavailable": 255
 
   # Cooling Type (Register 502 - AP028) - ENUM8
   - platform: modbus_controller
@@ -1451,6 +1458,7 @@ select:
       "Off": 0
       "Active Cooling": 1
       "Free Cooling": 2
+      "Unavailable": 255
 
   # Force Cooling Mode (Register 503 - AP015) - ENUM8
   - platform: modbus_controller
@@ -1465,6 +1473,7 @@ select:
     optionsmap:
       "No": 0
       "Yes": 1
+      "Unavailable": 255
 
   # CH Heat Demand Processing (Register 500 - AP016) - ENUM8
   - platform: modbus_controller
@@ -1479,6 +1488,7 @@ select:
     optionsmap:
       "Off": 0
       "On": 1
+      "Unavailable": 255
 
   # DHW Heat Demand Processing (Register 501 - AP017) - ENUM8
   - platform: modbus_controller
@@ -1493,6 +1503,7 @@ select:
     optionsmap:
       "Off": 0
       "On": 1
+      "Unavailable": 255
 
   # Hybrid Mode (Register 464 - HP061) - ENUM8
   - platform: modbus_controller
@@ -1509,6 +1520,7 @@ select:
       "Hybrid Cost": 1
       "Hybrid Primary Energy": 2
       "Hybrid CO2": 3
+      "Unavailable": 255
 
 # ============================================================================
 # NUMBER CONTROLS - Read-write numeric values
