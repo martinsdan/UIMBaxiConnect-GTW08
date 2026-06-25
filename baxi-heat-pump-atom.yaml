@@ -369,7 +369,9 @@ sensor:
     filters:
       - lambda: |-
           uint16_t raw = uint16_t(x);
-          ESP_LOGI("baxi_cop", "COP raw: %u (0x%04X), calculated: %.3f", raw, raw, raw * 0.001f);
+          if (raw == 0xFFFF || raw == 0) {
+            return {};  // Data not available
+          }
           return raw * 0.001f;
 
   # Current system power from consumer manager (Register 272)
@@ -432,7 +434,9 @@ sensor:
     internal: true
     filters:
       - lambda: |-
-          return (uint16_t)x & 0x00FF;   // Extract ENUM8 from low byte
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF) return {};  // Not available yet
+          return raw & 0x00FF;   // Extract ENUM8 from low byte
 
   # WiFi signal
   - platform: wifi_signal
@@ -558,7 +562,9 @@ sensor:
     filters:
       - lambda: |-
           uint32_t raw = uint32_t(x);
-          ESP_LOGI("baxi_power", "Power raw: %u (0x%08X), calc: %.2f kW", raw, raw, raw * 0.01f);
+          if (raw == 0xFFFFFFFF || raw == 0) {
+            return {};  // Data not available
+          }
           return raw * 0.01f;
 
   # ============================================================================
@@ -579,7 +585,10 @@ sensor:
     state_class: measurement
     accuracy_decimals: 2
     filters:
-      - multiply: 0.01
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF) return {};
+          return raw * 0.01f;
 
   # CH Setpoint of Appliance (Register 406 - PM002) - 0.01°C
   - platform: modbus_controller
@@ -595,7 +604,10 @@ sensor:
     state_class: measurement
     accuracy_decimals: 2
     filters:
-      - multiply: 0.01
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF) return {};
+          return raw * 0.01f;
 
   # Cooling Flow Temp Setpoint (Register 407 - HM033) - 0.01°C
   - platform: modbus_controller
@@ -611,7 +623,10 @@ sensor:
     state_class: measurement
     accuracy_decimals: 2
     filters:
-      - multiply: 0.01
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF) return {};
+          return raw * 0.01f;
 
   # DHW Flow Temp Setpoint (Register 408 - DM004) - 0.01°C
   - platform: modbus_controller
@@ -627,7 +642,10 @@ sensor:
     state_class: measurement
     accuracy_decimals: 2
     filters:
-      - multiply: 0.01
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF) return {};
+          return raw * 0.01f;
 
   # Flow Rate (Register 410 - AM056) - 0.01 l/min
   - platform: modbus_controller
@@ -642,7 +660,10 @@ sensor:
     state_class: measurement
     accuracy_decimals: 2
     filters:
-      - multiply: 0.01
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF) return {};
+          return raw * 0.01f;
 
   # COP Threshold (Register 463 - HM032) - 0.001 resolution
   - platform: modbus_controller
@@ -657,7 +678,10 @@ sensor:
     state_class: measurement
     accuracy_decimals: 3
     filters:
-      - lambda: return uint16_t(x) * 0.001f;
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF || raw == 0) return {};
+          return raw * 0.001f;
 
   # Heat Pump Defrost (Register 481 - HM009) - ENUM8
   - platform: modbus_controller
@@ -698,7 +722,10 @@ sensor:
     state_class: measurement
     accuracy_decimals: 2
     filters:
-      - multiply: 0.01
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF) return {};
+          return raw * 0.01f;
 
   # ODU Current Draw (Register 456 - HM062) - 0.1A
   - platform: modbus_controller
@@ -750,7 +777,10 @@ sensor:
     state_class: measurement
     accuracy_decimals: 2
     filters:
-      - multiply: 0.01
+      - lambda: |-
+          int16_t raw = (int16_t)x;
+          if (raw == -32768 || raw == 0x7FFF) return {};  // 0x8000 = unavailable
+          return raw * 0.01f;
 
   # Zone 1 Current Flow Temp Setpoint (Register 1101 - CM070) - 0.01°C
   - platform: modbus_controller
@@ -766,7 +796,10 @@ sensor:
     state_class: measurement
     accuracy_decimals: 2
     filters:
-      - multiply: 0.01
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF) return {};
+          return raw * 0.01f;
 
   # Zone 1 Room Temperature (Register 1104 - CM030) - 0.1°C
   - platform: modbus_controller
@@ -782,7 +815,10 @@ sensor:
     state_class: measurement
     accuracy_decimals: 1
     filters:
-      - multiply: 0.1
+      - lambda: |-
+          int16_t raw = (int16_t)x;
+          if (raw == -32768 || raw == 0x7FFF) return {};  // 0x8000 = unavailable
+          return raw * 0.1f;
 
   # Zone 1 Heat Demand Active (Register 1106 - CM150) - ENUM8
   - platform: modbus_controller
@@ -947,6 +983,7 @@ text_sensor:
         case 1: return std::string("Frost Protection");
         case 2: return std::string("Summer Neutral Band");
         case 3: return std::string("Summer");
+        case 255: return std::string("Unavailable");
         default: return std::string("Unknown (" + to_string(mode_code) + ")");
       }
 
@@ -1647,7 +1684,9 @@ number:
     write_lambda: |-
       return x * 100.0;
     lambda: |-
-      return x * 0.01;
+      uint16_t raw = (uint16_t)x;
+      if (raw == 0xFFFF) return NAN;
+      return raw * 0.01;
 
   # Cooling Temperature Setpoint (Register 260) - Remote cooling temp, 0.01°C (v1.02+)
   - platform: modbus_controller
@@ -1668,7 +1707,9 @@ number:
     write_lambda: |-
       return x * 100.0;
     lambda: |-
-      return x * 0.01;
+      int16_t raw = (int16_t)x;
+      if (raw == -32768) return NAN;
+      return raw * 0.01;
 
   # Outdoor Temp Upper Limit for Heating (Register 386 - AP073) - 0.01°C
   # Heating stops above this outdoor temp (30.5 = disabled)
@@ -1732,7 +1773,9 @@ number:
     write_lambda: |-
       return x * 100.0;
     lambda: |-
-      return x * 0.01;
+      uint16_t raw = (uint16_t)x;
+      if (raw == 0xFFFF) return NAN;
+      return raw * 0.01;
 
   # DHW Reduced Setpoint (Register 666 - CP360) - 0.01°C
   - platform: modbus_controller
@@ -1753,4 +1796,6 @@ number:
     write_lambda: |-
       return x * 100.0;
     lambda: |-
-      return x * 0.01;
+      uint16_t raw = (uint16_t)x;
+      if (raw == 0xFFFF) return NAN;
+      return raw * 0.01;
