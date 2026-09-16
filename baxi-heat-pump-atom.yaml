@@ -27,11 +27,13 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
-  # Heat Demand option captured when Standby Mode is enabled, so disabling
-  # it resumes whatever mode (Heating/Cooling) was active before.
+  # Last non-Standby Heat Demand option, tracked continuously by
+  # heat_demand_select's on_value so Standby Mode resumes the real
+  # previous mode. restore_value: yes so a reboot while in Standby
+  # doesn't lose it; initial_value only applies before it's ever been set.
   - id: standby_mode_prev_heat_demand
     type: std::string
-    restore_value: no
+    restore_value: yes
     initial_value: '"Heating"'
 
 # Wi-Fi configuration
@@ -1342,6 +1344,18 @@ select:
       "Cooling": 8
     on_value:
       then:
+        # Track the last non-Standby mode regardless of how Heat Demand got
+        # there (this switch, HA, or the physical thermostat), so Standby
+        # Mode always resumes the real previous mode. Not gated by
+        # boot_complete: this is passive tracking, not a device write, and
+        # we want it seeded from the very first post-boot read.
+        - if:
+            condition:
+              lambda: 'return x != "Standby";'
+            then:
+              - globals.set:
+                  id: standby_mode_prev_heat_demand
+                  value: !lambda 'return x.str();'
         - if:
             condition:
               lambda: 'return id(boot_complete);'
@@ -1543,7 +1557,11 @@ switch:
   # appliance's own frost protection stays available while Heat Demand is
   # Standby - this is not a full power-off, the GTW-08 has no such register.
   # State is derived from Heat Demand (true "off" = truthful even if changed
-  # from the physical thermostat), not stored separately.
+  # from the physical thermostat), not stored separately. The mode to
+  # resume on turn-off is tracked continuously by heat_demand_select's
+  # on_value (above), not captured here, so it stays correct even if
+  # Standby was entered manually rather than through this switch, and
+  # survives an ESP reboot (the global is restore_value: true).
   - platform: template
     name: "Standby Mode"
     id: standby_mode
@@ -1554,13 +1572,6 @@ switch:
     lambda: |-
       return id(heat_demand_select).current_option() == "Standby";
     turn_on_action:
-      - if:
-          condition:
-            lambda: 'return id(heat_demand_select).current_option() != "Standby";'
-          then:
-            - globals.set:
-                id: standby_mode_prev_heat_demand
-                value: !lambda 'return id(heat_demand_select).current_option().str();'
       - select.set:
           id: heat_demand_select
           option: "Standby"
