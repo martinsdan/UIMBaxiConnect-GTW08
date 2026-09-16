@@ -1162,7 +1162,7 @@ text_sensor:
         default: return std::string("Unknown (" + to_string(code) + ")");
       }
 
-  # Zone 1 Activity (Register 1107 decoded)
+  # Zone 1 Activity (Register 1107 decoded) - GTW-08 manual Section 5.8.3 (CM130)
   - platform: template
     name: "Zone 1 Activity"
     id: zone1_activity_text
@@ -1172,14 +1172,14 @@ text_sensor:
     lambda: |-
       uint16_t code = (uint16_t)id(zone1_activity_code).state;
       switch(code) {
-        case 0: return std::string("Antifrost");
-        case 1: return std::string("Reduced");
+        case 0: return std::string("Off");
+        case 1: return std::string("Eco");
         case 2: return std::string("Comfort");
-        case 3: return std::string("Legionella");
+        case 3: return std::string("Anti Legionella");
         default: return std::string("Unknown (" + to_string(code) + ")");
       }
 
-  # Zone 1 Running Mode (Register 1108 decoded)
+  # Zone 1 Running Mode (Register 1108 decoded) - GTW-08 manual Section 5.8.3 (CM120)
   - platform: template
     name: "Zone 1 Running Mode"
     id: zone1_running_mode_text
@@ -1191,9 +1191,8 @@ text_sensor:
       switch(code) {
         case 0: return std::string("Scheduling");
         case 1: return std::string("Manual");
-        case 2: return std::string("Antifrost");
+        case 2: return std::string("Off");
         case 3: return std::string("Temporary");
-        case 4: return std::string("Holiday");
         default: return std::string("Unknown (" + to_string(code) + ")");
       }
 
@@ -1304,7 +1303,6 @@ select:
       "Power Only": 1
       "Temperature Only": 2
       "Monitoring Only": 3
-      "Unavailable": 255
 
   # Heat Demand control (Register 259) - Valid options per Tab.20: 0=Standby, 7=Heating, 8=Cooling
   - platform: modbus_controller
@@ -1320,7 +1318,6 @@ select:
       "Standby": 0
       "Heating": 7
       "Cooling": 8
-      "Unavailable": 255
     on_value:
       then:
         - if:
@@ -1376,7 +1373,6 @@ select:
       "Scheduling (uses heating curve)": 0
       "Manual (fixed setpoint)": 1
       "Off": 2
-      "Unavailable": 255
 
   # Force Summer Mode (Register 389 - AP089) - ENUM8
   - platform: modbus_controller
@@ -1391,7 +1387,6 @@ select:
     optionsmap:
       "Off": 0
       "On": 1
-      "Unavailable": 255
 
   # DHW Eco/Comfort Mode (Register 479 - DP051) - ENUM8
   - platform: modbus_controller
@@ -1406,7 +1401,6 @@ select:
     optionsmap:
       "Eco (HP only)": 0
       "Comfort (HP + Boiler)": 1
-      "Unavailable": 255
 
   # Silent Mode (Register 490 - HP058) - ENUM8
   - platform: modbus_controller
@@ -1425,7 +1419,6 @@ select:
       "Level 3": 3
       "Level 4": 4
       "Level 5": 5
-      "Unavailable": 255
 
   # Backup Type (Register 482 - HP029) - ENUM8
   - platform: modbus_controller
@@ -1442,7 +1435,6 @@ select:
       "1-Stage Electric": 1
       "2-Stage Electric": 2
       "Boiler Backup": 3
-      "Unavailable": 255
 
   # Cooling Type (Register 502 - AP028) - ENUM8
   - platform: modbus_controller
@@ -1458,7 +1450,6 @@ select:
       "Off": 0
       "Active Cooling": 1
       "Free Cooling": 2
-      "Unavailable": 255
 
   # Force Cooling Mode (Register 503 - AP015) - ENUM8
   - platform: modbus_controller
@@ -1473,7 +1464,6 @@ select:
     optionsmap:
       "No": 0
       "Yes": 1
-      "Unavailable": 255
 
   # CH Heat Demand Processing (Register 500 - AP016) - ENUM8
   - platform: modbus_controller
@@ -1488,7 +1478,6 @@ select:
     optionsmap:
       "Off": 0
       "On": 1
-      "Unavailable": 255
 
   # DHW Heat Demand Processing (Register 501 - AP017) - ENUM8
   - platform: modbus_controller
@@ -1503,7 +1492,6 @@ select:
     optionsmap:
       "Off": 0
       "On": 1
-      "Unavailable": 255
 
   # Hybrid Mode (Register 464 - HP061) - ENUM8
   - platform: modbus_controller
@@ -1520,7 +1508,6 @@ select:
       "Hybrid Cost": 1
       "Hybrid Primary Energy": 2
       "Hybrid CO2": 3
-      "Unavailable": 255
 
 # ============================================================================
 # NUMBER CONTROLS - Read-write numeric values
@@ -1533,7 +1520,7 @@ number:
   # Gradient is the temperature increase per °C of outdoor temperature drop
 
   # Base Temperature Setpoint (Register 675 - CP210)
-  # Display: 15.0-30.0°C, Lambda: divides by 10 for read, multiplies by 10 for write
+  # Display: 15.0-40.0°C, Lambda: divides by 10 for read, multiplies by 10 for write
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "Heating Curve Base"
@@ -1556,14 +1543,16 @@ number:
       }
       return raw * 0.1f;
     write_lambda: |-
-      if (isnan(x) || x < 15.0f || x > 30.0f) {
-        return 0;  // Invalid input
+      // Keep this in sync with min_value/max_value above.
+      if (isnan(x) || x < 15.0f || x > 40.0f) {
+        ESP_LOGW("zone1_curve_base", "Rejecting out-of-range write: %.1f", x);
+        return {};  // Abort the write; register is left untouched
       }
       return (uint16_t)(x * 10.0f);
 
 
   # Heating Curve Gradient (Register 674 - CP230)
-  # Display: 0.3-2.0, Lambda: divides by 10 for read, multiplies by 10 for write
+  # Display: 0.0-2.0, Lambda: divides by 10 for read, multiplies by 10 for write
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "Heating Curve Gradient"
@@ -1585,8 +1574,10 @@ number:
       }
       return raw * 0.1f;
     write_lambda: |-
-      if (isnan(x) || x < 0.3f || x > 2.0f) {
-        return 0;  // Invalid input
+      // Keep this in sync with min_value/max_value above.
+      if (isnan(x) || x < 0.0f || x > 2.0f) {
+        ESP_LOGW("zone1_curve_gradient", "Rejecting out-of-range write: %.1f", x);
+        return {};  // Abort the write; register is left untouched
       }
       return (uint16_t)(x * 10.0f);
 
