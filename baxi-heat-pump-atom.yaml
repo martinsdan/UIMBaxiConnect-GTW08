@@ -50,7 +50,7 @@ api:
 
 ota:
   - platform: esphome
-    encryption:  # Inherits the api encryption key above; cheaper and stronger than a password
+    password: !secret ota_password
 
 # Logs (baud_rate: 0 frees UART for Modbus)
 logger:

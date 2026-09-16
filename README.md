@@ -157,9 +157,8 @@ wifi_ssid: "YourWiFiNetworkName"
 wifi_password: "YourWiFiPassword"
 fallback_ap_password: "fallback_password_123"
 api_key: "your-esphome-api-key"
+ota_password: "your-ota-password"
 ```
-
-OTA updates reuse the `api_key` for encryption, so no separate `ota_password` is needed.
 
 ### Step 4: Flash
 
