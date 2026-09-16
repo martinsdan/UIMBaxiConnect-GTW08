@@ -27,6 +27,12 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
+  # Heat Demand option captured when Away Mode is enabled, so disabling it
+  # resumes whatever mode (Heating/Cooling) was active before leaving.
+  - id: away_mode_prev_heat_demand
+    type: std::string
+    restore_value: no
+    initial_value: '"Heating"'
 
 # Wi-Fi configuration
 wifi:
@@ -1524,6 +1530,55 @@ select:
       "Hybrid Cost": 1
       "Hybrid Primary Energy": 2
       "Hybrid CO2": 3
+
+# ============================================================================
+# SWITCHES - Composite controls built on top of the selects above
+# ============================================================================
+
+switch:
+  # Away Mode: standby the compressor and disable CH/DHW heat demand while
+  # you're away, then resume whatever mode (Heating/Cooling) was active
+  # before. Deliberately does NOT touch Zone 1 Operating Mode, so the
+  # appliance's own frost protection stays available while Heat Demand is
+  # Standby - this is not a full power-off, the GTW-08 has no such register.
+  # State is derived from Heat Demand (true "off" = truthful even if changed
+  # from the physical thermostat), not stored separately.
+  - platform: template
+    name: "Away Mode"
+    id: away_mode
+    icon: mdi:home-export-outline
+    # DISABLED: without this, the default ALWAYS_OFF restore mode fires
+    # turn_off_action on every boot, forcing the heat pump back on.
+    restore_mode: DISABLED
+    lambda: |-
+      return id(heat_demand_select).current_option() == "Standby";
+    turn_on_action:
+      - if:
+          condition:
+            lambda: 'return id(heat_demand_select).current_option() != "Standby";'
+          then:
+            - globals.set:
+                id: away_mode_prev_heat_demand
+                value: !lambda 'return id(heat_demand_select).current_option().str();'
+      - select.set:
+          id: heat_demand_select
+          option: "Standby"
+      - select.set:
+          id: ch_heat_demand
+          option: "Off"
+      - select.set:
+          id: dhw_heat_demand
+          option: "Off"
+    turn_off_action:
+      - select.set:
+          id: heat_demand_select
+          option: !lambda 'return id(away_mode_prev_heat_demand);'
+      - select.set:
+          id: ch_heat_demand
+          option: "On"
+      - select.set:
+          id: dhw_heat_demand
+          option: "On"
 
 # ============================================================================
 # NUMBER CONTROLS - Read-write numeric values
