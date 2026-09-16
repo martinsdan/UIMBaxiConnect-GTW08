@@ -70,7 +70,7 @@ ESPHome firmware for **M5Stack AtomS3 Lite + Atomic RS485 Base** to integrate **
   - Outlier filtering for temperature sensors
   - Range validation for all sensor values
   - Boot protection prevents spurious commands during startup
-  - `force_new_range` on section boundaries to prevent GTW-08 bulk read rejection
+  - `reuse_previous_range: false` on section boundaries to prevent GTW-08 bulk read rejection
   - `use_write_multiple: true` on all writable entities (GTW-08 requires FC16)
 
 - OTA Updates & Web Server for diagnostics
@@ -87,7 +87,7 @@ Reference: GTW-08 Protocol Document (NOT-7854678), Section 5.5 - all data types 
 
 ## Critical: Modbus Read Grouping
 
-ESPHome groups nearby registers into single bulk reads for efficiency. The GTW-08 cannot handle bulk reads that span across its internal register section boundaries. `force_new_range: true` is set on:
+ESPHome groups nearby registers into single bulk reads for efficiency. The GTW-08 cannot handle bulk reads that span across its internal register section boundaries. `reuse_previous_range: false` is set on:
 - Register 1100 (Zone 1 monitoring) - splits from Zone config section (640+)
 - Register 9230 (COP/Hybrid) - splits from Zone monitoring section (1100+)
 
@@ -220,14 +220,22 @@ uart:
 
 ### Modbus Controller
 ```yaml
+modbus:
+  id: modbus1
+  uart_id: modbus_uart
+  turnaround_time: 1000ms  # Wait between requests (increased for reliability)
+
 modbus_controller:
   - id: gtw08_controller
     address: 0x64           # GTW-08 default address
     modbus_id: modbus1
     setup_priority: 100     # Ensures reads before select evaluates
     update_interval: 30s    # Poll every 30 seconds (optimized for stability)
-    command_throttle: 1000ms # Wait between requests (increased for reliability)
 ```
+
+Board diagnostic registers (device type, board count) rarely change, so they're
+polled by a second `modbus_controller` on the same bus at a slower interval
+instead of every 30s.
 
 ## Home Assistant Integration
 
@@ -524,8 +532,8 @@ All writable entities now have `use_write_multiple: true`. The GTW-08 only accep
 ### Power Output scaling (Register 413)
 Was incorrectly treating the raw UINT16 value as a direct percentage (0-100). The GTW-08 uses 0.0001 resolution (raw 10000 = 100%). Fixed with proper `raw * 0.01` scaling and updated range validation.
 
-### Bulk read rejection (force_new_range)
-ESPHome groups nearby registers into bulk reads. When reads span across GTW-08 section boundaries (e.g., Zone Config 640-990 + Zone Monitoring 1100+), the GTW-08 returns Exception 3 (Illegal Data Value). Fixed with `force_new_range: true` on section boundaries (registers 1100 and 9230).
+### Bulk read rejection (reuse_previous_range)
+ESPHome groups nearby registers into bulk reads. When reads span across GTW-08 section boundaries (e.g., Zone Config 640-990 + Zone Monitoring 1100+), the GTW-08 returns Exception 3 (Illegal Data Value). Fixed with `reuse_previous_range: false` on section boundaries (registers 1100 and 9230) - the modern replacement for ESPHome's now-deprecated `force_new_range`.
 
 ## Known Limitations
 
