@@ -50,7 +50,7 @@ api:
 
 ota:
   - platform: esphome
-    password: !secret ota_password
+    encryption:  # Inherits the api encryption key above; cheaper and stronger than a password
 
 # Logs (baud_rate: 0 frees UART for Modbus)
 logger:
@@ -65,7 +65,7 @@ button:
 # Integrated status LED on AtomS3
 light:
   - platform: esp32_rmt_led_strip
-    rgb_order: GRB
+    channel_colors: GRB
     pin: GPIO35
     num_leds: 1
     chipset: ws2812
@@ -92,15 +92,24 @@ modbus:
   id: modbus1
   uart_id: modbus_uart
   send_wait_time: 250ms
+  turnaround_time: 1000ms  # Command spacing (replaces the deprecated per-controller command_throttle)
 
 modbus_controller:
   - id: gtw08_controller
     address: 0x64 # GTW-08 default Modbus address (100 decimal = 0x64 hex)
     modbus_id: modbus1
-    command_throttle: 1000ms  # Increased from 500ms
     setup_priority: 100 # Higher priority to ensure reads complete before select evaluates
     update_interval: 30s      # Increased from 15s
     offline_skip_updates: 5 # Skip updates if no response
+
+  # Same physical device; polls the rarely-changing board diagnostic
+  # registers on a slower interval. Replaces the deprecated per-sensor
+  # skip_updates (previously every 10th 30s cycle = 5 min).
+  - id: gtw08_controller_diag
+    address: 0x64
+    modbus_id: modbus1
+    setup_priority: 99
+    update_interval: 5min
 
 serial_proxy:
   - id: rs485_serial
@@ -237,9 +246,9 @@ sensor:
           }
           return pressure;
 
-  # Number of control boards (Register 128) - Since this works on your system
+  # Number of control boards (Register 128) - polled every 5 min via gtw08_controller_diag
   - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
+    modbus_controller_id: gtw08_controller_diag
     name: "Number of Control Boards"
     id: num_control_boards
     address: 128
@@ -247,45 +256,41 @@ sensor:
     value_type: U_WORD
     icon: mdi:format-list-numbered
     entity_category: diagnostic
-    skip_updates: 10  # Update every 10th cycle (every 5 minutes with 30s interval)
     filters:
       - lambda: |-
           return (uint16_t)x & 0x00FF;   // Extract UINT8 from low byte
 
-  # Board 1 device type (Register 129)
+  # Board 1 device type (Register 129) - polled every 5 min via gtw08_controller_diag
   - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
+    modbus_controller_id: gtw08_controller_diag
     name: "Board 1 Device Type"
     id: board1_device_type
     address: 129
     register_type: holding
     value_type: U_WORD
     entity_category: diagnostic
-    skip_updates: 10  # Update every 10th cycle
     internal: true  # Hide raw hex value, use text sensor instead
 
-  # Board 2 device type (Register 135)
+  # Board 2 device type (Register 135) - polled every 5 min via gtw08_controller_diag
   - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
+    modbus_controller_id: gtw08_controller_diag
     name: "Board 2 Device Type"
     id: board2_device_type
     address: 135
     register_type: holding
     value_type: U_WORD
     entity_category: diagnostic
-    skip_updates: 10  # Update every 10th cycle
     internal: true  # Hide raw hex value, use text sensor instead
 
-  # Board 3 device type (Register 141)
+  # Board 3 device type (Register 141) - polled every 5 min via gtw08_controller_diag
   - platform: modbus_controller
-    modbus_controller_id: gtw08_controller
+    modbus_controller_id: gtw08_controller_diag
     name: "Board 3 Device Type"
     id: board3_device_type
     address: 141
     register_type: holding
     value_type: U_WORD
     entity_category: diagnostic
-    skip_updates: 10  # Update every 10th cycle
     internal: true  # Hide raw hex value, use text sensor instead
 
   # Error flags (Register 277) - List of errors for all devices
@@ -353,7 +358,7 @@ sensor:
           return pct;
 
   # Calculated instantaneous COP (Register 9230 - HM031) - FIXED SENTINEL HANDLING
-  # force_new_range: hybrid section (9200+) is a separate address range
+  # reuse_previous_range: false - hybrid section (9200+) is a separate address range
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "COP - Instantaneous"
@@ -362,7 +367,7 @@ sensor:
     address: 9230
     register_type: holding
     value_type: U_WORD
-    force_new_range: true
+    reuse_previous_range: false
     unit_of_measurement: ""
     state_class: measurement
     accuracy_decimals: 3
@@ -740,7 +745,10 @@ sensor:
     state_class: measurement
     accuracy_decimals: 1
     filters:
-      - multiply: 0.1
+      - lambda: |-
+          uint16_t raw = (uint16_t)x;
+          if (raw == 0xFFFF) return {};
+          return raw * 0.1f;
 
   # Condenser Pump Speed (Register 453 - HM069) - 0.001 resolution
   - platform: modbus_controller
@@ -761,8 +769,9 @@ sensor:
           return raw * 0.1f;
 
   # Zone 1 Flow/Return Temperature (Register 1100 - CM040) - 0.01°C
-  # force_new_range: these zone monitoring regs (1100+) are in a different section
-  # from the zone config regs (640+), GTW-08 rejects bulk reads spanning both
+  # reuse_previous_range: false - these zone monitoring regs (1100+) are in a
+  # different section from the zone config regs (640+), GTW-08 rejects bulk
+  # reads spanning both
   - platform: modbus_controller
     modbus_controller_id: gtw08_controller
     name: "Zone 1 Flow Temperature"
@@ -771,7 +780,7 @@ sensor:
     address: 1100
     register_type: holding
     value_type: S_WORD
-    force_new_range: true
+    reuse_previous_range: false
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
@@ -903,9 +912,12 @@ text_sensor:
     update_interval: 30s
     lambda: |-
       uint16_t device_type = (uint16_t)id(board1_device_type).state;
+      if (device_type == 0xFFFF || device_type == 0) {
+        return std::string("Not Available");
+      }
       uint8_t category = (device_type >> 8) & 0xFF;
       uint8_t number = device_type & 0xFF;
-      
+
       switch(category) {
         case 0x00: return std::string("CU-GH" + (number > 0 ? to_string(number) : ""));
         case 0x01: return std::string("CU-OH" + (number > 0 ? to_string(number) : ""));
@@ -1624,7 +1636,9 @@ number:
     write_lambda: |-
       return x * 10.0;
     lambda: |-
-      return x * 0.1;
+      uint16_t raw = (uint16_t)x;
+      if (raw == 0xFFFF) return NAN;
+      return raw * 0.1f;
 
   # Target Flow Temperature (Register 648) - 0.01 C resolution
   - platform: modbus_controller
