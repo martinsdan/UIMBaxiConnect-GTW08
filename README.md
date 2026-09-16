@@ -32,7 +32,7 @@ ESPHome firmware for **M5Stack AtomS3 Lite + Atomic RS485 Base** to integrate **
   - Hybrid Mode (No Hybrid / Cost / Primary Energy / CO2)
 
 - System Control (Switches):
-  - Away Mode (standbys the compressor and disables CH/DHW heat demand, then resumes the prior mode)
+  - Standby Mode (standbys the compressor and disables CH/DHW heat demand, then resumes the prior mode - handy while away or in mild Spring/Autumn weather)
 
 - System Control (Numbers):
   - Zone 1 Heating Curve Base & Gradient (adjustable)
@@ -268,17 +268,19 @@ instead of every 30s.
 
 | Switch | What it does |
 |--------|--------------|
-| Away Mode | **On:** sets Heat Demand (259) to Standby and CH/DHW Heat Demand (500/501) to Off. **Off:** restores Heat Demand to whatever mode (Heating/Cooling) was active before Away Mode was turned on, and re-enables CH/DHW Heat Demand. |
+| Standby Mode | **On:** sets Heat Demand (259) to Standby and CH/DHW Heat Demand (500/501) to Off. **Off:** restores Heat Demand to whatever mode (Heating/Cooling) was active before Standby Mode was turned on, and re-enables CH/DHW Heat Demand. |
 
-Away Mode is a composite control built entirely on the selects above - it
-doesn't touch any register the selects don't already cover, and its
+Standby Mode is a composite control built entirely on the selects above -
+it doesn't touch any register the selects don't already cover, and its
 on/off state is read back from Heat Demand rather than stored separately,
 so it stays truthful even if you change modes from the physical
 thermostat. It is **not** a full power-off (the GTW-08 has no such
 register) - Zone 1 Operating Mode is deliberately left alone so the
-appliance's own frost protection can still react while you're away.
+appliance's own frost protection can still react while it's on. Useful
+whenever you don't need heating or cooling - away from home, or in mild
+Spring/Autumn weather - not just for vacations.
 Automations can drive it with `switch.turn_on`/`switch.turn_off` on
-`switch.away_mode`.
+`switch.standby_mode`.
 
 ### Number Controls (Read-Write)
 
