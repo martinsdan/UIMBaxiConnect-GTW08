@@ -5,6 +5,8 @@ substitutions:
 esphome:
   name: ${devicename}
   friendly_name: ${friendly_name}
+  includes:
+    - board_device_type.h
   project:
     name: "Liberdade4.UIMBaxiConnect-GTW08"
     version: "1.2"
@@ -42,6 +44,7 @@ captive_portal:
 
 web_server:
   port: 80
+  ota: false  # Firmware uploads go through the authenticated 'ota:' platform only
 
 # Home Assistant API
 api:
@@ -469,6 +472,9 @@ sensor:
       float base_temp = id(zone1_curve_base).state;
       float gradient = id(zone1_curve_gradient).state;
       float out_temp = id(outdoor_temp).state;
+      if (isnan(base_temp) || isnan(gradient) || isnan(out_temp)) {
+        return {};  // Inputs not ready yet (e.g. before first successful read)
+      }
       // Calculate: Base + (20 - Outdoor) * Gradient
       float target = base_temp + (20.0 - out_temp) * gradient;
       return target;
@@ -904,80 +910,32 @@ text_sensor:
   # BOARD DIAGNOSTIC TEXT SENSORS
   # ============================================================================
   
-  # Board 1 device type decoded
+  # Board 1 device type decoded - shared decode logic in board_device_type.h
   - platform: template
     name: "Board 1 Type"
     icon: mdi:chip
     entity_category: diagnostic
     update_interval: 30s
     lambda: |-
-      uint16_t device_type = (uint16_t)id(board1_device_type).state;
-      if (device_type == 0xFFFF || device_type == 0) {
-        return std::string("Not Available");
-      }
-      uint8_t category = (device_type >> 8) & 0xFF;
-      uint8_t number = device_type & 0xFF;
+      return decode_board_device_type((uint16_t)id(board1_device_type).state);
 
-      switch(category) {
-        case 0x00: return std::string("CU-GH" + (number > 0 ? to_string(number) : ""));
-        case 0x01: return std::string("CU-OH" + (number > 0 ? to_string(number) : ""));
-        case 0x02: return std::string("EHC" + (number > 0 ? to_string(number) : ""));
-        case 0x14: return std::string("MK" + (number > 0 ? to_string(number) : ""));
-        case 0x19: return std::string("SCB" + (number > 0 ? to_string(number) : ""));
-        case 0x1B: return std::string("EEC" + (number > 0 ? to_string(number) : ""));
-        case 0x1E: return std::string("Gateway" + (number > 0 ? to_string(number) : ""));
-        default: return std::string("Unknown (0x" + to_string(device_type) + ")");
-      }
-
-  # Board 2 device type decoded
+  # Board 2 device type decoded - shared decode logic in board_device_type.h
   - platform: template
     name: "Board 2 Type"
     icon: mdi:chip
     entity_category: diagnostic
     update_interval: 30s
     lambda: |-
-      uint16_t device_type = (uint16_t)id(board2_device_type).state;
-      if (device_type == 0xFFFF || device_type == 0) {
-        return std::string("Not Available");
-      }
-      uint8_t category = (device_type >> 8) & 0xFF;
-      uint8_t number = device_type & 0xFF;
-      
-      switch(category) {
-        case 0x00: return std::string("CU-GH" + (number > 0 ? to_string(number) : ""));
-        case 0x01: return std::string("CU-OH" + (number > 0 ? to_string(number) : ""));
-        case 0x02: return std::string("EHC" + (number > 0 ? to_string(number) : ""));
-        case 0x14: return std::string("MK" + (number > 0 ? to_string(number) : ""));
-        case 0x19: return std::string("SCB" + (number > 0 ? to_string(number) : ""));
-        case 0x1B: return std::string("EEC" + (number > 0 ? to_string(number) : ""));
-        case 0x1E: return std::string("Gateway" + (number > 0 ? to_string(number) : ""));
-        default: return std::string("Unknown (0x" + to_string(device_type) + ")");
-      }
+      return decode_board_device_type((uint16_t)id(board2_device_type).state);
 
-  # Board 3 device type decoded
+  # Board 3 device type decoded - shared decode logic in board_device_type.h
   - platform: template
     name: "Board 3 Type"
     icon: mdi:chip
     entity_category: diagnostic
     update_interval: 30s
     lambda: |-
-      uint16_t device_type = (uint16_t)id(board3_device_type).state;
-      if (device_type == 0xFFFF || device_type == 0) {
-        return std::string("Not Available");
-      }
-      uint8_t category = (device_type >> 8) & 0xFF;
-      uint8_t number = device_type & 0xFF;
-      
-      switch(category) {
-        case 0x00: return std::string("CU-GH" + (number > 0 ? to_string(number) : ""));
-        case 0x01: return std::string("CU-OH" + (number > 0 ? to_string(number) : ""));
-        case 0x02: return std::string("EHC" + (number > 0 ? to_string(number) : ""));
-        case 0x14: return std::string("MK" + (number > 0 ? to_string(number) : ""));
-        case 0x19: return std::string("SCB" + (number > 0 ? to_string(number) : ""));
-        case 0x1B: return std::string("EEC" + (number > 0 ? to_string(number) : ""));
-        case 0x1E: return std::string("Gateway" + (number > 0 ? to_string(number) : ""));
-        default: return std::string("Unknown (0x" + to_string(device_type) + ")");
-      }
+      return decode_board_device_type((uint16_t)id(board3_device_type).state);
 
   # ============================================================================
   # SEASONAL MODE TEXT (Register 385 decoded)
