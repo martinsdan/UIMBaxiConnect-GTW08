@@ -27,6 +27,14 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
+  # Last non-Standby Heat Demand option, tracked continuously by
+  # heat_demand_select's on_value so Standby Mode resumes the real
+  # previous mode. restore_value: yes so a reboot while in Standby
+  # doesn't lose it; initial_value only applies before it's ever been set.
+  - id: standby_mode_prev_heat_demand
+    type: std::string
+    restore_value: yes
+    initial_value: '"Heating"'
 
 # Wi-Fi configuration
 wifi:
@@ -1336,6 +1344,18 @@ select:
       "Cooling": 8
     on_value:
       then:
+        # Track the last non-Standby mode regardless of how Heat Demand got
+        # there (this switch, HA, or the physical thermostat), so Standby
+        # Mode always resumes the real previous mode. Not gated by
+        # boot_complete: this is passive tracking, not a device write, and
+        # we want it seeded from the very first post-boot read.
+        - if:
+            condition:
+              lambda: 'return x != "Standby";'
+            then:
+              - globals.set:
+                  id: standby_mode_prev_heat_demand
+                  value: !lambda 'return x.str();'
         - if:
             condition:
               lambda: 'return id(boot_complete);'
@@ -1524,6 +1544,53 @@ select:
       "Hybrid Cost": 1
       "Hybrid Primary Energy": 2
       "Hybrid CO2": 3
+
+# ============================================================================
+# SWITCHES - Composite controls built on top of the selects above
+# ============================================================================
+
+switch:
+  # Standby Mode: standby the compressor and disable CH/DHW heat demand
+  # (e.g. while away, or in mild Spring/Autumn weather when neither heating
+  # nor cooling is needed), then resume whatever mode (Heating/Cooling) was
+  # active before. Deliberately does NOT touch Zone 1 Operating Mode, so the
+  # appliance's own frost protection stays available while Heat Demand is
+  # Standby - this is not a full power-off, the GTW-08 has no such register.
+  # State is derived from Heat Demand (true "off" = truthful even if changed
+  # from the physical thermostat), not stored separately. The mode to
+  # resume on turn-off is tracked continuously by heat_demand_select's
+  # on_value (above), not captured here, so it stays correct even if
+  # Standby was entered manually rather than through this switch, and
+  # survives an ESP reboot (the global is restore_value: true).
+  - platform: template
+    name: "Standby Mode"
+    id: standby_mode
+    icon: mdi:power-standby
+    # DISABLED: without this, the default ALWAYS_OFF restore mode fires
+    # turn_off_action on every boot, forcing the heat pump back on.
+    restore_mode: DISABLED
+    lambda: |-
+      return id(heat_demand_select).current_option() == "Standby";
+    turn_on_action:
+      - select.set:
+          id: heat_demand_select
+          option: "Standby"
+      - select.set:
+          id: ch_heat_demand
+          option: "Off"
+      - select.set:
+          id: dhw_heat_demand
+          option: "Off"
+    turn_off_action:
+      - select.set:
+          id: heat_demand_select
+          option: !lambda 'return id(standby_mode_prev_heat_demand);'
+      - select.set:
+          id: ch_heat_demand
+          option: "On"
+      - select.set:
+          id: dhw_heat_demand
+          option: "On"
 
 # ============================================================================
 # NUMBER CONTROLS - Read-write numeric values
